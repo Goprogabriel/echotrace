@@ -75,3 +75,11 @@ Kør demoen over HTTPS, prøv en egen lille understøttet fil, kontrollér netv�
 - Søgeområde: Aarhus-genvejen opdaterer koordinatfelter og kort; zoomknappen starter ikke formularens analyse. Klik på kortet samt piletast + Enter opdaterer koordinaterne.
 - Alle seks synlige kortfliser på det kontrollerede søgekort blev indlæst. Kortvisningen blev visuelt kontrolleret.
 - To-finger-zoom er implementeret med Pointer Events; fysisk multitouch på telefon er ikke testet i denne opdatering.
+
+## Lyst og forenklet design · 3. november 2026
+
+- `npm run check`: TypeScript, build og de 20 eksisterende tests bestod.
+- Den syntetiske demo gennemførte i lokal browser med produktions-CSP og viste to frekvensspor, kandidater og OpenStreetMap.
+- Forside og resultater blev visuelt kontrolleret ved desktop- og mobilbredde. Ingen horisontal overflow blev målt på de to visninger ved den kontrollerede mobilbredde (354 CSS-pixel).
+- Søgeformular og kort blev visuelt kontrolleret ved mobilbredde. Tekniske detaljer er samlet under “Detaljer og forbehold”.
+- Browserharnessens selectors er opdateret til de nye sidetitler; Python-harnessen blev ikke genkørt i denne opdatering.

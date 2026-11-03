@@ -8,21 +8,21 @@ export function setupCanvas(canvas: HTMLCanvasElement, height?: number): CanvasR
 export function drawWaveform(canvas: HTMLCanvasElement, values: Float32Array): void {
   const ctx = setupCanvas(canvas), {width: w, height: h} = canvas.getBoundingClientRect();
   const max = Math.max(.001, ...values); ctx.clearRect(0, 0, w, h);
-  ctx.strokeStyle = '#cbf99a'; ctx.lineWidth = 1;
+  ctx.strokeStyle = '#27674d'; ctx.lineWidth = 1;
   for (let i = 0; i < values.length; i++) {
     const x = i / values.length * w, amp = values[i] / max * h * .42;
     ctx.beginPath(); ctx.moveTo(x, h/2 - amp); ctx.lineTo(x, h/2 + amp); ctx.stroke();
   }
 }
 export function spectrumColor(value: number): [number, number, number] {
-  const stops = [[7,12,16],[16,32,43],[21,66,70],[32,119,109],[119,190,130],[216,251,164]];
+  const stops = [[248,250,245],[229,239,221],[190,216,181],[125,174,130],[58,123,88],[24,76,56]];
   const v = clamp(value, 0, .999) * (stops.length - 1), i = Math.floor(v), t = v - i;
   return stops[i].map((c, k) => Math.round(c + (stops[i+1][k] - c) * t)) as [number,number,number];
 }
 export function drawSpectrogram(canvas: HTMLCanvasElement, analysis: SignalAnalysis, candidate?: Candidate): void {
   const ctx = setupCanvas(canvas), {width: w, height: h} = canvas.getBoundingClientRect();
   const left = 45, right = 12, top = 12, bottom = 27, pw = Math.max(1, Math.floor(w-left-right)), ph = Math.max(1, Math.floor(h-top-bottom));
-  ctx.fillStyle = '#080e12'; ctx.fillRect(0,0,w,h);
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,w,h);
   const image = new ImageData(pw,ph);
   const maxHz = 520;
   for (let y = 0; y < ph; y++) {
@@ -34,20 +34,20 @@ export function drawSpectrogram(canvas: HTMLCanvasElement, analysis: SignalAnaly
     }
   }
   const temp = document.createElement('canvas'); temp.width=pw; temp.height=ph; temp.getContext('2d')!.putImageData(image,0,0); ctx.drawImage(temp,left,top,pw,ph);
-  ctx.font = '10px ui-monospace, monospace'; ctx.fillStyle = '#7f909d'; ctx.strokeStyle = '#ffffff0d'; ctx.lineWidth = 1;
+  ctx.font = '10px ui-monospace, monospace'; ctx.fillStyle = '#52654f'; ctx.strokeStyle = '#243d2012'; ctx.lineWidth = 1;
   for (let hz = 100; hz <= 500; hz += 100) {
     const y = top + (maxHz-hz)/(maxHz-analysis.minHz)*ph;
     ctx.fillText(String(hz), 8,y+3); ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(w-right,y);ctx.stroke();
   }
   for (let i=0;i<=4;i++) {const x=left+i*pw/4;ctx.fillText(`${Math.round(i*analysis.duration/4)}s`,Math.min(w-28,x-5),h-5);}
-  const colors = ['#deffaa','#79dff4','#d5b6ff'];
+  const colors = ['#215a3b','#175e8a','#784795'];
   analysis.tracks.forEach((track, i) => {
     ctx.strokeStyle=colors[i%3];ctx.lineWidth=1.1;ctx.beginPath();
     track.points.forEach((p,k)=>{const x=left+p.t/analysis.duration*pw,y=top+(maxHz-p.hz)/(maxHz-analysis.minHz)*ph;k?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.stroke();
     const p=track.points[Math.floor(track.points.length*.6)];ctx.fillStyle=colors[i%3];ctx.fillText(track.id,left+p.t/analysis.duration*pw+6,top+(maxHz-p.hz)/(maxHz-analysis.minHz)*ph-8);
   });
   if (candidate) candidate.matches.forEach(m=>{
-    ctx.setLineDash([5,4]);ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.beginPath();
+    ctx.setLineDash([5,4]);ctx.strokeStyle='#171f23';ctx.lineWidth=1.5;ctx.beginPath();
     m.predicted.forEach((p,i)=>{const x=left+p.t/analysis.duration*pw,y=top+(maxHz-p.hz)/(maxHz-analysis.minHz)*ph;i?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.stroke();ctx.setLineDash([]);
   });
 }

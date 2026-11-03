@@ -10,7 +10,7 @@ function unproject(x, y, z) {
 }
 let mapTilesEnabled = true;
 export function mountMap(container, options) {
-    container.innerHTML = `<div class="map-tiles"></div><canvas class="geo-canvas" tabindex="0" aria-label="${options.onPick ? 'Vælg søgeområde på kortet. Klik for at sætte centrum.' : 'Kort med flybaner og kandidatområder.'} Brug piletaster til at flytte og plus/minus til at zoome. Ctrl eller Command og rul zoomer også."></canvas><div class="map-topline"><span class="map-tag">${icon('target')}<span data-map-kind>${mapTilesEnabled ? 'OPENSTREETMAP' : 'LOKALT KOORDINATKORT'}</span></span><span class="map-tag">${options.onPick ? 'KLIK FOR AT VÆLGE CENTRUM' : 'MODELFEJL · IKKE SANDSYNLIGHED'}</span></div><div class="map-controls"><button type="button" data-map="plus" aria-label="Zoom ind">${icon('plus')}</button><button type="button" data-map="minus" aria-label="Zoom ud">${icon('minus')}</button><button type="button" data-map="fit" aria-label="Vis hele søgeområdet">${icon('target')}</button></div><div class="map-bottom"><label class="tile-toggle"><input type="checkbox" data-map="tiles" ${mapTilesEnabled ? 'checked' : ''}><span>Vis baggrundskort</span></label><span class="map-attribution">${mapTilesEnabled ? '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap-bidragsydere</a>' : 'Geografisk grid · træk for at flytte'}</span></div><div class="map-load-error" role="status" hidden>Kortfliser kunne ikke hentes. Du kan stadig bruge koordinater, markører og zoom.</div><div class="map-privacy">Baggrundskort sender kortudsnit og din IP til OpenStreetMap. Ingen video sendes.</div>`;
+    container.innerHTML = `<div class="map-tiles"></div><canvas class="geo-canvas" tabindex="0" aria-label="${options.onPick ? 'Vælg søgeområde på kortet. Klik for at sætte centrum.' : 'Kort med flybaner og kandidatområder.'} Brug piletaster til at flytte og plus/minus til at zoome. Ctrl eller Command og rul zoomer også."></canvas><div class="map-controls"><button type="button" data-map="plus" aria-label="Zoom ind">${icon('plus')}</button><button type="button" data-map="minus" aria-label="Zoom ud">${icon('minus')}</button><button type="button" data-map="fit" aria-label="Vis hele søgeområdet">${icon('target')}</button></div><div class="map-bottom"><label class="tile-toggle"><input type="checkbox" data-map="tiles" ${mapTilesEnabled ? 'checked' : ''}><span>Vis baggrundskort</span></label><span class="map-attribution">${mapTilesEnabled ? '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap-bidragsydere</a>' : 'Geografisk grid · træk for at flytte'}</span></div><div class="map-load-error" role="status" hidden>Kortfliser kunne ikke hentes. Du kan stadig bruge koordinater, markører og zoom.</div>`;
     const canvas = container.querySelector('canvas'), tiles = container.querySelector('.map-tiles');
     let centerLat = options.config.lat, centerLon = options.config.lon, zoom = 10, enabled = mapTilesEnabled;
     let dragging = null;
@@ -27,14 +27,14 @@ export function mountMap(container, options) {
         const xy = (lat, lon) => { const p = project(lat, lon, zoom), world = 256 * 2 ** zoom; let dx = p[0] - center[0]; dx -= Math.round(dx / world) * world; return [dx + w / 2, p[1] - center[1] + h / 2]; };
         ctx.clearRect(0, 0, w, h);
         if (!enabled) {
-            ctx.fillStyle = '#0c1418';
+            ctx.fillStyle = '#f1f5ed';
             ctx.fillRect(0, 0, w, h);
         }
         // Screen-aligned grid with correctly projected geographic tick labels.
-        ctx.strokeStyle = enabled ? '#a3b5bd22' : '#33495155';
+        ctx.strokeStyle = enabled ? '#344a3512' : '#708a7025';
         ctx.lineWidth = .7;
         ctx.font = '10px ui-monospace, monospace';
-        ctx.fillStyle = '#70818a';
+        ctx.fillStyle = '#586d56';
         const gridStep = 80;
         for (let x = ((w / 2 - center[0]) % gridStep + gridStep) % gridStep; x < w; x += gridStep) {
             ctx.beginPath();
@@ -54,14 +54,14 @@ export function mountMap(container, options) {
         }
         const searchCenter = xy(options.config.lat, options.config.lon), metersPerPixel = 40075016 * Math.cos(options.config.lat * Math.PI / 180) / (256 * 2 ** zoom), r = options.config.radiusKm * 1000 / metersPerPixel;
         ctx.setLineDash([5, 7]);
-        ctx.strokeStyle = '#9bae974f';
+        ctx.strokeStyle = '#47633a99';
         ctx.beginPath();
         ctx.arc(...searchCenter, r, 0, Math.PI * 2);
         ctx.stroke();
         ctx.setLineDash([]);
         if (options.onPick) {
-            ctx.strokeStyle = '#d0f6a1';
-            ctx.fillStyle = '#142016';
+            ctx.strokeStyle = '#216448';
+            ctx.fillStyle = '#ffffff';
             ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.arc(...searchCenter, 7, 0, Math.PI * 2);
@@ -79,7 +79,7 @@ export function mountMap(container, options) {
             const p = xy(cell.lat, cell.lon), v = 1 - clamp((cell.misfit - floor) / Math.max(.001, ceiling - floor), 0, 1);
             if (v < .2)
                 continue;
-            ctx.fillStyle = `rgba(184,237,141,${v * .22})`;
+            ctx.fillStyle = `rgba(39,103,77,${v * .22})`;
             ctx.beginPath();
             ctx.arc(...p, clamp(r / 9, 2, 18), 0, Math.PI * 2);
             ctx.fill();
@@ -88,7 +88,7 @@ export function mountMap(container, options) {
         const activeIds = new Set(active?.matches.map(m => m.flightId) || []);
         options.flights.forEach(f => {
             const hot = activeIds.has(f.id);
-            ctx.strokeStyle = hot ? '#74cfe0b5' : '#71889038';
+            ctx.strokeStyle = hot ? '#246b8acc' : '#627a8890';
             ctx.lineWidth = hot ? 1.7 : .8;
             ctx.beginPath();
             f.points.forEach((p, i) => { const v = xy(p.lat, p.lon); if (!i || p.t - f.points[i - 1].t > 30)
@@ -99,7 +99,7 @@ export function mountMap(container, options) {
             if (hot) {
                 const p = f.points.reduce((a, b) => Math.abs(b.t - options.config.startTime) < Math.abs(a.t - options.config.startTime) ? b : a);
                 const v = xy(p.lat, p.lon);
-                ctx.fillStyle = '#a3e4ed';
+                ctx.fillStyle = '#205777';
                 ctx.beginPath();
                 ctx.moveTo(v[0], v[1] - 6);
                 ctx.lineTo(v[0] + 4, v[1] + 5);
@@ -113,14 +113,14 @@ export function mountMap(container, options) {
         });
         options.candidates.forEach((c, i) => {
             const p = xy(c.lat, c.lon), selected = i === options.selected;
-            ctx.strokeStyle = selected ? '#d0f6a1' : '#8c9d85';
+            ctx.strokeStyle = selected ? '#216448' : '#52694c';
             ctx.lineWidth = selected ? 2 : 1;
-            ctx.fillStyle = selected ? '#c9f69b17' : '#d4e8bb0b';
+            ctx.fillStyle = selected ? '#27674d22' : '#27674d11';
             ctx.beginPath();
             ctx.arc(...p, selected ? 28 : 18, 0, Math.PI * 2);
             ctx.fill();
             ctx.stroke();
-            ctx.fillStyle = selected ? '#d0f6a1' : '#9fb58d';
+            ctx.fillStyle = selected ? '#216448' : '#52694c';
             ctx.beginPath();
             ctx.arc(...p, 4, 0, Math.PI * 2);
             ctx.fill();
@@ -284,7 +284,6 @@ export function mountMap(container, options) {
         tileKey = '';
         if (!enabled)
             tiles.replaceChildren();
-        container.querySelector('[data-map-kind]').textContent = enabled ? 'OPENSTREETMAP' : 'LOKALT KOORDINATKORT';
         container.querySelector('.map-attribution').innerHTML = enabled ? '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap-bidragsydere</a>' : 'Geografisk grid · træk for at flytte';
         draw();
     });

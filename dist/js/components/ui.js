@@ -33,10 +33,10 @@ export function logo() {
     return `<a href="#/" class="logo" aria-label="Echotrace — forside"><span class="logo-symbol"><i></i><i></i><i></i><i></i><i></i></span>echotrace<span class="logo-dot">°</span></a>`;
 }
 export function header(lab = false) {
-    return `<header class="site-header"><div class="header-inner">${logo()}<nav aria-label="Hovedmenu">${lab ? '<a href="#/" class="nav-back">Til forsiden</a><a href="#/method">Metoden</a>' : '<button data-scroll="how">Sådan virker det</button><button data-scroll="inside">Teknologien</button><a href="#/privacy">Privatliv</a>'}</nav><button class="btn btn-primary btn-small" data-action="upload">${icon('upload')}<span>Analyser video</span></button></div></header>`;
+    return `<header class="site-header"><div class="header-inner">${logo()}<nav aria-label="Hovedmenu">${lab ? '<a href="#/" class="nav-back">Til forsiden</a><a href="#/method">Metoden</a>' : '<button data-scroll="how">Sådan virker det</button><a href="#/method">Metoden</a><a href="#/privacy">Privatliv</a>'}</nav><button class="btn btn-primary btn-small" data-action="upload">${icon('upload')}<span>Analyser video</span></button></div></header>`;
 }
 export function footer() {
-    return `<footer class="site-footer"><div class="footer-top">${logo()}<p>Find signalet. Kend usikkerheden.</p><span class="pill"><span class="status-dot"></span>Åben kode · v0.1</span></div><div class="footer-bottom"><span>Et eksperimentelt lydlaboratorium. Bygget til din browser.</span><div><a href="#/method">Metode & kilder</a><a href="#/privacy">Privatliv</a><a href="./examples/schema-example.json" download>Dataformat</a></div></div></footer>`;
+    return `<footer class="site-footer">${logo()}<nav aria-label="Sideinformation"><a href="#/method">Metoden</a><a href="#/privacy">Privatliv</a><a href="https://github.com/Goprogabriel/echotrace" target="_blank" rel="noopener noreferrer">GitHub</a></nav></footer>`;
 }
 export function field(label, name, value, props = '', help = '') {
     return `<label class="field"><span>${label}</span><input name="${name}" value="${esc(value)}" ${props}>${help ? `<small>${help}</small>` : ''}</label>`;

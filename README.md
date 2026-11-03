@@ -6,8 +6,6 @@
 
 [![Build og GitHub Pages](https://github.com/Goprogabriel/echotrace/actions/workflows/pages.yml/badge.svg)](https://github.com/Goprogabriel/echotrace/actions/workflows/pages.yml)
 
-[![Echotrace — mørkt lydlaboratorium med interaktive visualiseringer](docs/previews/home-desktop.png)](https://goprogabriel.github.io/echotrace/)
-
 ## Prøv det på et minut
 
 1. Åbn [Echotrace online](https://goprogabriel.github.io/echotrace/).
@@ -16,7 +14,7 @@
 
 Ingen installation, konto eller API-nøgle. **Din mediefil behandles lokalt i browseren.** Demoen bruger simulerede flydata og kører den rigtige analyse. Projektet er eksperimentelt; det er ikke en valideret metode til præcis lokalisering.
 
-Færdigbygget statisk hjemmeside + komplet TypeScript-kildekode. Dansk brugerflade, mørkt design, limegrønne detaljer, animeret forside, lokal videobehandling, spektrogram, eksperimentel sammenligning med flybaner og interaktiv resultatside.
+Færdigbygget statisk hjemmeside + komplet TypeScript-kildekode. Lys og enkel dansk brugerflade, lokal videobehandling, spektrogram, eksperimentel sammenligning med flybaner og interaktive OpenStreetMap-kort.
 
 ## Start her — ingen npm-installation nødvendig
 
@@ -54,7 +52,7 @@ Appen bruger relative filstier og hash-routing (`#/lab`, `#/method`, `#/privacy`
 
 ## Det får du
 
-- Animeret forside med uploadknap, interaktive forklaringer, illustrative lydkurver, FAQ og privatlivsside.
+- Enkel forside med filvalg, demo, en kort introduktion og svar på de vigtigste spørgsmål.
 - Lokal filvælger og drag-and-drop, original video-/lydafspiller og faktisk målt waveform/spektrogram.
 - Lydafkodning via browseren; FFT, tonale spor og fysisk kurvematch i Web Workers.
 - Indtastning af UTC-tid, geografisk søgeområde, urusikkerhed og mikrofonhøjde.
@@ -146,7 +144,7 @@ docs/                      Metode, datakontrakt, testresultater og deploy
 - [DEPLOYMENT.md](docs/DEPLOYMENT.md) — statisk publicering og sikkerhed.
 - [TEST-RESULTS.md](docs/TEST-RESULTS.md) — hvad der er testet, og hvad der ikke er.
 - [SOURCES.md](docs/SOURCES.md) — primære kilder.
-- `docs/previews/` — skærmbilleder af den leverede brugerflade.
+- `docs/previews/` — historiske skærmbilleder af det oprindelige mørke design. Se demoen for den aktuelle lyse brugerflade.
 
 ## Licenser
 
