@@ -50,6 +50,8 @@ Engangsopsætning i repository: **Settings → Pages → Build and deployment �
 
 Appen bruger relative filstier og hash-routing (`#/lab`, `#/method`, `#/privacy`), så den fungerer under `/echotrace/` uden omskrivningsregler. Ingen backend, database eller hemmelige nøgler er nødvendige. Andre statiske HTTPS-hosts kan også servere indholdet af `dist/`. Se [deploy-guiden](docs/DEPLOYMENT.md).
 
+**Sprog:** Vælg **DA** eller **EN** øverst på siden. Valget følger med i adressen (`?lang=da` / `?lang=en`) og bevares ved genindlæsning. Oversættelserne ligger lokalt i `src/i18n-catalog.ts`; der bruges ingen ekstern oversættelsestjeneste.
+
 ## Det får du
 
 - Enkel forside med filvalg, demo, en kort introduktion og svar på de vigtigste spørgsmål.

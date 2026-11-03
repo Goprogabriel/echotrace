@@ -137,3 +137,13 @@ Brugerfladen siger nu “Lyd registreret · ingen brugbare Dopplerkurver” og f
 - Ved åbning af manuel optegning blev tidspunktet bevaret. Klik i grafen tilføjede ét anker og ændrede ikke videoens tidspunkt.
 - Markørerne er DOM-overlays og genberegner ikke FFT under afspilning. Uden for et zoomet tidsudsnit vises tidspunktet ved kanten med en forklaring.
 - Logo og favicon bruger et nyt vektorsymbol med ekkoringe og frekvenskurve. Ingen nye runtimeafhængigheder.
+
+## Dansk og engelsk · 3. november 2026
+
+- DA/EN-knapper i den fælles header, også ved mobilbredde. Sproget gemmes som `?lang=da` eller `?lang=en` i adressen; ingen localStorage eller eksterne oversættelsestjenester.
+- Lokal browserkontrol: engelsk forside, metode, privatliv, analyse, kort, resultater, usikkerhedsbeskeder og rapporteksport. Dokumentets `lang`, sidetitel og beskrivelse følger sprogvalget. Engelske metode-/privatlivsafsnit og resultattekster blev kontrolleret for tilbageværende danske æ/ø/å.
+- En kørende syntetisk analyse fortsatte efter skift fra engelsk til dansk. Ved skift tilbage bevaredes to valgte spor, fire kandidater, et åbent detaljefelt og den endnu ikke anvendte zoomværdi 5 sekunder.
+- Genindlæsning af `?lang=en` åbnede fortsat engelsk. Den engelske rapport indeholdt `language: en`, engelsk afkodningsbeskrivelse og engelske advarsler.
+- En tavs WAV med det danske filnavn `prøve fil.wav` viste engelske analysebeskeder og bevarede filnavnet uændret. Brugerens filnavne, kaldesignaler og vilkårlige datakilder oversættes ikke.
+- Ved 390 CSS-pixels var begge sprogknapper synlige, og dokumentets bredde var 390 pixels uden horisontal overflow. Browserens normale bredde blev gendannet efter kontrollen.
+- `npm run check`: TypeScript, build og **51 tests bestået**. Nye tests dækker bevarelse af URL/rute, dynamiske beskeder, indlejrede statusbeskeder, tomme resultater, nummerformat og oversættelsesparametre.

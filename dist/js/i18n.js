@@ -48,12 +48,11 @@ export function translateTree(root) {
     let node;
     while ((node = walker.nextNode())) {
         const parent = node.parentElement;
-        if (!parent || parent.closest('script,style,[data-i18n-skip],.file-info'))
+        if (!parent || parent.closest('script,style,[data-i18n-skip],.file-info,.source-credit,.dataset-loaded p,.dataset-loaded small'))
             continue;
         if (!originalText.has(node))
             originalText.set(node, node.textContent || '');
-        const source = originalText.get(node);
-        node.textContent = parent.closest('.source-credit,.dataset-loaded p,.dataset-loaded small') ? (language === 'en' ? english[normalize(source)] || source : source) : translateText(source);
+        node.textContent = translateText(originalText.get(node));
     }
     for (const el of root.querySelectorAll('[aria-label],[title],[placeholder],[alt]')) {
         if (el.closest('[data-i18n-skip]') || el.matches('.file-info strong'))
