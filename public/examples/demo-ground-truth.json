@@ -1,0 +1,12 @@
+{
+  "synthetic": true,
+  "notUsedByApp": true,
+  "lat": 55.69415441341787,
+  "lon": 12.571544405433375,
+  "receiverAltitudeM": 12,
+  "sourceHz": [
+    130,
+    260
+  ],
+  "notes": "Independent synthetic round-trip test. Not real-world validation."
+}

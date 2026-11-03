@@ -1,0 +1,7 @@
+node_modules/
+test-output/
+.DS_Store
+__pycache__/
+*.log
+.env
+.env.*

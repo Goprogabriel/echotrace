@@ -1,0 +1,69 @@
+# Testresultater — Echotrace 0.1.0
+
+Kørt 3. november 2026. Resultaterne beskriver denne leverede version, ikke generel geolokationspræcision.
+
+## Build og kerne: bestået
+
+Strikt TypeScript-build med TypeScript 5.8.3: **0 kompileringsfejl**. Node.js 22.16.0. `npm test`: **20 af 20 tests bestået**.
+
+Testene dækker FFT på kendt tone, ugyldig FFT-størrelse, tidszoner/Unix-sekunder, validering af flydata, dublerede fly-ID’er, citeret CSV, API’ens indlejrede MultiLineString/tidsformat, omregning fra fod til meter, historisk forespørgselsvindue, interpolationsgab, Dopplerfortegn og lydens forsinkelse, stilhed, stationær tone, seedet støj, korte filer, syntetisk tonaldetektion, positionssøgning, manglende tidsoverlap og parametergrænser.
+
+En rigtig HTTP-test starter den medfølgende Node-server og kontrollerer HTML, JavaScript-MIME, sikkerhedsheadere, MP4-byte-range, HEAD, 404, beskyttelse mod stiudbrud og afvisning af POST. Serveren har ingen upload-endpoint.
+
+Kommandoer efter ændringer i kildekoden:
+
+```sh
+npm install
+npm run typecheck
+npm run build
+npm test
+```
+
+Med den allerede medfølgende build kan `npm test` køres uden installation af TypeScript.
+
+## Syntetisk rundtur: bestået
+
+Testlyd: 64 sekunder, 8 kHz, to syntetiske bevægende kilder på 130 Hz og 260 Hz, stationær 50 Hz-tone og seedet støj. To fabrikerede, uafhængige flybaner. Ingen rigtige personers eller flys bevægelser indgår.
+
+WAV-kernetesten fandt to tonale spor og en bedste kandidat cirka **11,3 meter** fra den separat gemte testposition. Den fulde MP4-browsertest fandt to spor og en bedste kandidat cirka **11.3 meter** fra samme syntetiske testposition, med relativ frekvens-RMSE **0.0368%**.
+
+**Disse afstande må ikke bruges som et løfte om præcision på virkelige videoer.** Signalet blev syntetiseret under næsten samme idealiserede forudsætninger som matcheren. Testen påviser konsistens i implementeringen, ikke uafhængig fysisk validitet.
+
+Appen læser `demo-session.json` med søgecentrum og kendt tid, men læser **ikke** `demo-ground-truth.json`. Ground truth bruges kun i tests. Kandidaterne kommer fra en reel søgning, ikke fra et hardkodet resultat.
+
+## Browserfunktioner: kontrolleret med lokal testharness
+
+Browser: Chromium 144.0.7559.96. Desktop 1440×1100 og mobil-lignende viewport 390×844.
+
+Den kontrollerede browsermiljøpolitik blokerede navigation til alle URL’er, også localhost. Politikken blev ikke ændret. I stedet blev de lokale byggede moduler, CSS og fixtures indlæst fra hukommelsen i en about:blank-testside. Et modul-worker kan ikke startes på normal vis fra den opaque testorigin; derfor blev de uændrede beregningsmoduler samlet til én classic Blob Worker **kun i testen**. Produktion bruger den normale separate ES-module Worker.
+
+Følgende blev faktisk kørt i denne harness:
+
+- Forside, navigation, metode- og privatlivsside.
+- **Rigtig MP4/AAC-afkodning** via browserens Web Audio API.
+- Rigtig FFT, sporingskode og fysisk søgning i worker-kontekst.
+- Resultatvisning med 4 kandidater, kort og modelkurver.
+- Eksport og parsing af den rigtige JSON-rapport.
+- Rigtig lokal filvælger til WAV, indtastede søgeparametre og lokal JSON-import.
+- Ugyldig fil giver synlig fejl.
+- Mobil-lignende forside og resultat uden horisontal overflow.
+- **0 ufangede JavaScript-fejl** i de afprøvede forløb.
+
+Netværk var afvist i harness, undtagen fixture-hentning fra de tre medfølgende lokale demoaktiver. Browserresumé ligger i `docs/browser-test-summary.json`; skærmbilleder i `docs/previews/`.
+
+`tests/ui-memory.py` indeholder harness-koden. Den er en valgfri udviklingstest og kræver Python, Playwright og en installeret Chromium-browser. Installeret systembrowser kan vælges med `CHROMIUM_PATH`. Den er ikke en runtime-afhængighed for hjemmesiden.
+
+## Ikke verificeret
+
+- Live adsb.aero-kald, aktuelle arkivdata, netværks-CORS og API-drift. Adapteren er testet med dokumentationsbaserede lokale svar.
+- Hentning af OpenStreetMap-kortfliser fra et live deploy.
+- Fuld browsernavigation og workerindlæsning via produktionens HTTP/HTTPS og CSP. HTTP-server og filer er testet separat; den faktiske browsernav-test var blokeret af miljøpolitikken.
+- AudioWorklet-afspilningsfallback som ende-til-ende-forløb.
+- Fysiske iPhones/iPads, Safari, Android-browser og native Windows-/Mac-startfiler.
+- Store brugerfiler tæt på hukommelsesgrænsen.
+- Virkelige optagelser med uafhængigt verificeret sted/tid.
+- Statistisk kalibrering, geolokationsnøjagtighed eller falsk-positiv-rate på virkelige data.
+
+## Anbefalet accepttest på din egen host
+
+Kør demoen over HTTPS, prøv en egen lille understøttet fil, kontrollér netværksfanen, test lokal import, og verificér derefter flytjeneste og kortfliser separat. Brug virkelige samtykkebaserede kontroloptagelser før du tillægger lokationshypoteserne vægt.

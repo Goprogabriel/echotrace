@@ -1,0 +1,9 @@
+{
+  "lat": 55.7,
+  "lon": 12.55,
+  "radiusKm": 6,
+  "startTime": 1787050800.0,
+  "clockUncertainty": 0,
+  "receiverAltitudeM": 12,
+  "soundSpeed": 343
+}

@@ -1,0 +1,25 @@
+ECHOTRACE — START HER
+====================
+
+1. Pak hele ZIP-filen ud.
+2. Åbn START-WINDOWS.cmd eller START-MAC.command.
+   På Linux: sh START-LINUX.sh
+3. Tryk “Prøv demoen” på hjemmesiden.
+
+Kræver Node.js eller Python 3 installeret på computeren.
+Ingen npm-installation, konto, API-nøgle eller database er nødvendig.
+
+Alternativt fra projektmappen:
+  node scripts/serve.mjs --open
+
+Til online brug: upload indholdet af dist/ til en statisk HTTPS-host.
+Åbn ikke index.html direkte som file://.
+
+VIGTIGT
+Dette er en kørbar eksperimentel app, ikke et valideret værktøj til at
+finde en sikker adresse fra enhver video. Du skal kende cirka tid og område.
+Demoen er syntetisk. Live flydata kan afhænge af ekstern drift og dækning.
+API-kald kunne ikke verificeres live i leveringsmiljøet.
+
+Kildekode, tests og fuld dokumentation medfølger.
+Læs README.md og docs/TEST-RESULTS.md.

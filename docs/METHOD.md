@@ -1,0 +1,58 @@
+# Metode og implementering
+
+Echotrace er en selvstændig eksperimentel implementering. Det er ikke en kopi af den oprindelige videos private kode, og den er ikke valideret som et generelt geolokationsprodukt.
+
+## 1. Lokal afkodning
+
+Browserens `decodeAudioData` i en OfflineAudioContext afkoder hele den valgte fil og resampler til 8.000 Hz. Kanaler blandes ikke blindt: kanalen med højest målt energi vælges for at undgå faseudslukning. Kodekunderstøttelse afhænger af browseren.
+
+Filgrænse: 150 MB. Varighed: 5–180 sekunder. Varigheden kontrolleres efter afkodning; afkoderen kan derfor kortvarigt bruge mere hukommelse end størrelsen af det endelige 8 kHz-signal. Brug små klip, især på telefoner. Afkodning kan ikke afbrydes internt af browser-API’en; ved annullering ignoreres dens resultat. Arbejdsprocessen og netværksforespørgsler kan stoppes.
+
+Fallback bruger brugeraktiveret, lydløs medieafspilning gennem AudioWorklet. Der anmodes ikke om mikrofonadgang. Udtrækket foregår i realtid, og afspilningsopstart kan forskyde tidsaksen. Denne fallback er implementeret, men ikke valideret på fysiske iOS-/Android-enheder.
+
+## 2. Spektrogram
+
+En egen radix-2 FFT bruger 8.192 samples, Hann-vindue og hop på 1.024 samples. Bin-afstand er 8.000/8.192 ≈ 0,977 Hz; bin-afstand er ikke det samme som evnen til at adskille to nærtliggende toner. Den effektive tidsudglatning er omtrent vindueslængden (1,024 sekunder). Analysen undersøger 30–650 Hz.
+
+Canvas-visualiseringen af brugerfilen tegner det faktisk beregnede spektrogram. Forsidens illustration er derimod syntetisk og tydeligt mærket.
+
+## 3. Tonale kurver
+
+En dynamisk programmeringsbaseret ridge-tracker afvejer lokal spektral fremtræden mod spring mellem nabovinduer. Efterfølgende filtre frasorterer stationære, korte, usammenhængende og stærkt hakkende spor. Nære harmoniske dubletter fjernes heuristisk.
+
+Denne implementering er målrettet faldende kurver. Den kan overse kortvarige, svage, delvist skjulte og atypiske passager. Den indeholder ikke en trænet flylydsklassifikator og kan ikke ud fra sporet alene afgøre, om lyden er et fly, en bil, musik eller en anden kilde. Matcheren bruger højst tre udvalgte spor.
+
+## 4. Bevægelse og akustik
+
+Flypunkter konverteres til jordcentrerede tredimensionale koordinater på en sfærisk jord med radius 6.371.000 meter. Lineær interpolation giver position og hastighed i hvert segment. Der ekstrapoleres ikke, og tidsmæssige huller over 30 sekunder accepteres ikke. Segmenter med supersonisk/urealistisk hastighed over cirka 335 m/s bruges ikke.
+
+Modellen antager stationær mikrofon og ensartet stillestående luft. Med c som lydhastighed, R som kilde-modtagerafstand og positiv radial hastighed for en kilde på vej væk løses:
+
+```text
+t_modtaget = t_udsendt + R(t_udsendt) / c
+f_modtaget = f_kilde × c / (c + v_radial(t_udsendt))
+```
+
+Udsendelsestiden løses iterativt. Det undgår fejlen at sammenligne en hørt tone med flyets samtidige, men for sene, registrerede position. Atmosfærisk brydning, vindfelt, multipath/refleksioner, ændrede motoromdrejninger og bevægende kamera er ikke modelleret.
+
+## 5. Afgrænset søgning
+
+Brugeren angiver et område og en UTC-starttid. UI tilbyder radius op til 30 km og urusikkerhed op til ±60 sekunder. Der er ikke en global geografisk søgning eller søgning efter en ukendt dato.
+
+For hvert geografisk gridpunkt og hver diskret urjustering beregnes den forventede Dopplerfaktor. En konstant kildetone tilpasses ved vægtede mindste kvadrater. Hvert udvalgt lydspor matches mod den bedst passende flybane. Samme fly kan i princippet forklare flere spor; antal separate fly-ID’er rapporteres særskilt.
+
+Først afsøges et 17×17 grid afgrænset til en cirkel. Op til fire adskilte kandidater raffineres i to efterfølgende grids. Dette er en heuristisk coarse-to-fine-søgning, ikke et bevis på et globalt optimum.
+
+## 6. Fejlmål og kandidatgrænser
+
+Et spor bedømmes efter relativ frekvens-RMSE og forbedring i forhold til en konstant observeret tone. Højst tre udvalgte spor skal alle kunne forklares; man kan ikke få et godt resultat ved kun at vælge det ene bekvemme spor og ignorere resten.
+
+Den foreløbige acceptregel er samlet relativ RMSE under 2%, mindst 75% forbedring over konstant-tone-baseline, hvert spor under 3,5% fejl og tilstrækkeligt datamæssigt overlap. Grænserne er ikke statistisk kalibreret. Mange afprøvede hypoteser kan give tilfældige lave fejlmål.
+
+Et enkelt fly giver ofte symmetriske eller aflange kandidatregioner. To eller flere geometrisk forskellige fly kan reducere tvetydigheden, men ukendt klokkeslæt, højde og kildetone kan stadig give falske matches. Kortets punkter og glødende gridceller er visning af beregninger — **ikke** posterior sandsynlighed eller et konfidensområde.
+
+## 7. Hvad næste forskningsarbejde kræver
+
+En dokumenteret præcision kræver samtykkebaserede virkelige optagelser med uafhængigt kendt sted/tid, realistiske negative kontroloptagelser, separate trænings-/valideringsdata og blindtest. Man skal måle fejlfordeling, falske matches, afvisningsrate og robusthed over for vind, mikrofon, motorvariationer, tid, datamangler og mange kandidater.
+
+Ingen sådan real-world-benchmark er inkluderet. De medfølgende syntetiske tests deler modelantagelser med matcheren og er derfor ikke uafhængig fysisk validering.

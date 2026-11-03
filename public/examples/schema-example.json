@@ -1,0 +1,33 @@
+{
+  "schema": "echotrace-flights/1",
+  "synthetic": true,
+  "source": "FORMAT EXAMPLE ONLY — replace with authorized historical data",
+  "license": "CC0 — synthetic example",
+  "flights": [
+    {
+      "id": "EXAMPLE-001",
+      "callsign": "SYNTHETIC",
+      "type": "EXAMPLE",
+      "points": [
+        {
+          "t": "2026-08-18T10:59:00Z",
+          "lat": 55.7,
+          "lon": 12.5,
+          "altM": 2200
+        },
+        {
+          "t": "2026-08-18T10:59:02Z",
+          "lat": 55.7,
+          "lon": 12.5036,
+          "altM": 2200
+        },
+        {
+          "t": "2026-08-18T10:59:04Z",
+          "lat": 55.7,
+          "lon": 12.5072,
+          "altM": 2200
+        }
+      ]
+    }
+  ]
+}

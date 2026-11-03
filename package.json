@@ -1,0 +1,6 @@
+{
+  "name": "echotrace", "version": "0.1.0", "private": true, "type": "module",
+  "description": "Private, browser-only acoustic Doppler research lab. No runtime dependencies.",
+  "scripts": {"start": "node scripts/serve.mjs", "dev": "node scripts/serve.mjs", "build": "node scripts/build.mjs", "typecheck": "tsc --noEmit", "test": "node --test tests/*.test.mjs", "check": "npm run typecheck && npm run build && npm test"},
+  "devDependencies": {"typescript": "5.8.3"}, "engines": {"node": ">=18"}, "license": "MIT"
+}

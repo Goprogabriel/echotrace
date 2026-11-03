@@ -1,0 +1,19 @@
+{
+  "testMode": "local in-memory Blob-module harness; managed Chromium blocks network navigation",
+  "errors": [],
+  "fetches": [
+    "assets/demo.mp4",
+    "examples/demo-flights.json",
+    "examples/demo-session.json"
+  ],
+  "desktopCandidateCount": 4,
+  "modelMisfit": 0.0003675957123966916,
+  "tracks": 2,
+  "accepted": true,
+  "mobileLandingOverflow": false,
+  "mobileResultsOverflow": false,
+  "chromiumVersion": "144.0.7559.96",
+  "realFileInputAndLocalImport": true,
+  "invalidFileError": true,
+  "reportExportContent": true
+}
