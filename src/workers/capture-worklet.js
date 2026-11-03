@@ -4,7 +4,7 @@ class LocalPcmCapture extends AudioWorkletProcessor {
     super(); this.buffer = new Float32Array(4096); this.offset = 0; this.active = false;
     this.port.onmessage = e => {
       if (e.data === 'start') this.active = true;
-      if (e.data === 'flush') { this.active = false; this.flush(); }
+      if (e.data === 'flush') { this.active = false; this.flush(); this.port.postMessage('flushed'); }
     };
   }
   flush() {
@@ -14,8 +14,12 @@ class LocalPcmCapture extends AudioWorkletProcessor {
     for (const output of outputs) for (const channel of output) channel.fill(0);
     const channels = inputs[0];
     if (!this.active || !channels?.length) return true;
-    // Preserve one channel rather than phase-cancelling stereo with a mean.
-    const input = channels[0];
+    // Keep the strongest channel in this block; never cancel opposite-polarity stereo.
+    let input = channels[0], bestEnergy = -1;
+    for (const channel of channels) {
+      let energy = 0; for (const sample of channel) energy += sample * sample;
+      if (energy > bestEnergy) { input = channel; bestEnergy = energy; }
+    }
     for (let i = 0; i < input.length; i++) { this.buffer[this.offset++] = input[i]; if (this.offset === this.buffer.length) this.flush(); }
     return true;
   }

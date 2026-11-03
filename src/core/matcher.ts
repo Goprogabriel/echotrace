@@ -33,11 +33,12 @@ function fitTrack(track: Ridge, flight: PreparedFlight, receiver: Vec3, config: 
 export function matchFlights(tracks: Ridge[], flights: Flight[], config: SearchConfig, progress: ProgressFn = () => {}): FitResult {
   const start = performance.now();
   if (!tracks.length) throw new Error('Der er ingen tonale spor at matche.');
+  if (tracks.length > 3) throw new Error('Vælg højst tre spor til én søgning.');
   if (!flights.length) throw new Error('Datasættet indeholder ingen anvendelige flybaner.');
   if (flights.length > 100) throw new Error('Brug højst 100 flybaner ad gangen.');
   if (![config.lat, config.lon, config.radiusKm, config.startTime, config.clockUncertainty, config.receiverAltitudeM, config.soundSpeed].every(Number.isFinite)) throw new Error('Ugyldige søgeparametre.');
   if (Math.abs(config.lat) > 80 || Math.abs(config.lon) > 180 || config.radiusKm < 1 || config.radiusKm > 50 || config.clockUncertainty < 0 || config.clockUncertainty > 60 || config.soundSpeed < 300 || config.soundSpeed > 370 || Math.abs(config.receiverAltitudeM) > 9000) throw new Error('Søgeparametrene ligger uden for modellens grænser.');
-  const prepared = flights.map(prepareFlight), selected = tracks.slice(0, 3);
+  const prepared = flights.map(prepareFlight), selected = tracks;
   const offsets = config.clockUncertainty ? [-1, -.5, 0, .5, 1].map(v => v * config.clockUncertainty) : [0];
   const step = config.radiusKm * 1000 / 8, grid: GridCell[] = [];
   const coarse: Candidate[] = []; let tested = 0;
@@ -107,6 +108,7 @@ export function matchFlights(tracks: Ridge[], flights: Flight[], config: SearchC
     'Der søges kun i det valgte område og tidsinterval. Et bedre match kan eksistere udenfor.',
     'Modellen antager en stationær mikrofon, en konstant motortone og ensartet, vindstille luft.',
     'ADS-B-højder, lydens hastighed og ukendt kameratid kan give systematiske fejl. Gridafstand er ikke en sikkerhedsradius.'];
+  if (selected.some(t => t.source === 'manual')) warnings.push('Manuelle spor bygger på brugerens optegnede punkter med lineær interpolation. Et match bekræfter ikke, at kurven findes i lyden.');
   if (candidates[0]?.matchedFlights === 1) warnings.push('Kun én uafhængig flybane matcher. Spejlede og aflange løsningsområder kan ikke udelukkes.');
   if (candidates.filter(c => c.accepted).length > 1) warnings.push('Flere adskilte områder passer til modellen. Resultatet er tvetydigt.');
   if (!candidates.some(c => c.accepted)) warnings.unshift('Ingen kandidater bestod den eksperimentelle kvalitetsgrænse.');

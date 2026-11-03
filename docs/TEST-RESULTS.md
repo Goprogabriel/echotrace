@@ -90,3 +90,14 @@ Kør demoen over HTTPS, prøv en egen lille understøttet fil, kontrollér netv�
 - Forside, demoresultat, OpenStreetMap, metode og privatliv blev visuelt kontrolleret i browser.
 - Privatlivssiden blev kontrolleret ved mobilbredde uden vandret overflow.
 - Diagrammernes farver er tilpasset via CSS; selve signaldataene er uændrede af denne designopdatering.
+
+## Lydarbejde efter gennemgang af colstos video · 3. november 2026
+
+- `npm run check`: TypeScript, build og **28 tests** bestået.
+- Nye regressionstests: 100.000 gange dæmpet testlyd beholder to spor; to separate passager i samme frekvensbånd bevares; events 920 sekunder fra hinanden beholder deres oprindelige lydtider; valgfri FFT/båndbredde og ikke-endelige samples; manuel optegnings validering, ankre og kildeangivelse; mere end tre valgte spor afvises eksplicit.
+- Worklet-test med simuleret AudioWorkletProcessor: højre stereokanal bevares, når venstre er tavs; output er lydløst; sidste PCM-blok sendes før en eksplicit `flushed`-kvittering. Dette er en komponenttest, ikke et fysisk browser-/codec-bevis for fallbacken.
+- Lokal browsertest med produktions-CSP og almindelige modul-workers: MP4-demoen afkodes, finder to spor og gennemfører søgningen. Visningen viste fire kandidater, to flybaner og cirka 0,02% model-RMSE for bedste kandidat.
+- Manuel optegning: tre indtastede punkter gemmes som M1, vises som manuelt spor og vælges til søgningen. Gamle resultater fjernes. Zoom på M1 satte tidsintervallet til 8–52 sekunder og frekvensintervallet til 100–165 Hz.
+- Genanalyse af det allerede åbnede lydspor ved FFT 16.384 gennemførte og gav nye spor og kandidater. Samme passage kan opdeles ved utydelige steder eller krydsende toner; de foreslåede spor skal gennemgås af brugeren.
+- Ingen browserlogs blev rapporteret under de kontrollerede forløb. Ingen horisontal overflow ved den kontrollerede viewport på 1021 CSS-pixel. Fysiske mobiler er ikke testet i denne opdatering.
+- Ingen geolokationsvalidering på ophavsmandens rå optagelse eller andre uafhængigt sted-/tidsbestemte virkelige optagelser. Globale data, terrænhøjder og heldagssøgning er fortsat ikke implementeret.

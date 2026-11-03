@@ -79,8 +79,8 @@ Den eksterne API-adapter er implementeret efter den offentlige dokumentation og 
 
 ## Første rigtige analyse
 
-1. Vælg din egen optagelse på 5–180 sekunder, højst 150 MB. En stationær mikrofon, tydelig flystøj og lidt tale/musik/vind er et bedre udgangspunkt.
-2. Se, om analysen finder anvendelige tonale spor.
+1. Vælg din egen optagelse på 5 sekunder–30 minutter, højst 150 MB. En stationær mikrofon, tydelig flystøj og lidt tale/musik/vind er et bedre udgangspunkt.
+2. Se, om analysen finder anvendelige tonale spor. Zoom ind på passagen, justér kontrast og FFT efter behov, og tegn et synligt svagt spor manuelt, hvis automatisk sporing ikke finder det. Vælg ét til tre spor til søgningen.
 3. Angiv **starttid i UTC** og et søgecentrum. Filens ændringsdato er ikke automatisk optagelsestid. Tidszonekonvertering skal være korrekt.
 4. Importér flydata lokalt, eller giv eksplicit tilladelse til at hente et afgrænset udsnit fra API’en.
 5. Læs kandidater, kurver og forbehold. “Ingen konklusion” er et gyldigt resultat.

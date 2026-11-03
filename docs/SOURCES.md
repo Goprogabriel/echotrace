@@ -16,3 +16,5 @@ Dokumentation undersøgt 3. november 2026. Det er dokumentationshenvisninger, ik
    https://operations.osmfoundation.org/policies/tiles/
 
 Kildekode, FFT, signalsporing, fysikmodel, UI, korttegning og demo er skrevet til dette projekt. Der er ikke hentet kode fra den oprindelige videos ophavsmand. Browserens medieafkoder og operativsystemets installerede skrifttyper anvendes uden at distribuere dem.
+
+- colsto — original demonstration, transcript and description reviewed 3 November 2026: https://www.youtube.com/watch?v=UytYrhYLOKI

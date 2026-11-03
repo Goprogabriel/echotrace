@@ -1,4 +1,4 @@
-import { clamp } from '../core/math.js';
+import { clamp, median } from '../core/math.js';
 export function setupCanvas(canvas, height) {
     const dpr = Math.min(2, window.devicePixelRatio || 1), rect = canvas.getBoundingClientRect();
     canvas.width = Math.max(1, Math.floor(rect.width * dpr));
@@ -26,18 +26,35 @@ export function spectrumColor(value) {
     const v = clamp(value, 0, .999) * (stops.length - 1), i = Math.floor(v), t = v - i;
     return stops[i].map((c, k) => Math.round(c + (stops[i + 1][k] - c) * t));
 }
-export function drawSpectrogram(canvas, analysis, candidate) {
+export function spectrumBounds(width, height) {
+    return { left: 45, top: 12, width: Math.max(1, Math.floor(width - 57)), height: Math.max(1, Math.floor(height - 39)) };
+}
+export function drawSpectrogram(canvas, analysis, candidate, view, selectedTracks, anchors = []) {
     const ctx = setupCanvas(canvas), { width: w, height: h } = canvas.getBoundingClientRect();
-    const left = 45, right = 12, top = 12, bottom = 27, pw = Math.max(1, Math.floor(w - left - right)), ph = Math.max(1, Math.floor(h - top - bottom));
+    const { left, top, width: pw, height: ph } = spectrumBounds(w, h);
+    const start = view?.start ?? 0, end = view?.end || analysis.duration;
+    const minHz = view?.minHz ?? analysis.minHz, maxHz = view?.maxHz ?? analysis.maxHz;
+    const timeSpan = Math.max(.1, end - start), band = Math.max(1, maxHz - minHz);
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, w, h);
+    // Estimate each frame's spectral floor so faint tones remain visible without changing PCM.
+    const floors = new Float32Array(analysis.frames);
+    for (let f = 0; f < analysis.frames; f++) {
+        const values = [];
+        for (let b = 0; b < analysis.bins; b += 8)
+            values.push(analysis.db[f * analysis.bins + b]);
+        floors[f] = median(values);
+    }
     const image = new ImageData(pw, ph);
-    const maxHz = 520;
-    for (let y = 0; y < ph; y++) {
-        const hz = maxHz - y / ph * (maxHz - analysis.minHz), b = clamp(Math.round((hz - analysis.minHz) / (analysis.maxHz - analysis.minHz) * (analysis.bins - 1)), 0, analysis.bins - 1);
-        for (let x = 0; x < pw; x++) {
-            const f = Math.min(analysis.frames - 1, Math.floor(x / pw * analysis.frames)), db = analysis.db[f * analysis.bins + b];
-            const c = spectrumColor((db + 85) / 70), p = (y * pw + x) * 4;
+    for (let x = 0; x < pw; x++) {
+        const t = start + x / pw * timeSpan;
+        const frame = Math.round((t * analysis.sampleRate - analysis.fftSize / 2) / analysis.hopSize);
+        const f = clamp(frame, 0, analysis.frames - 1);
+        for (let y = 0; y < ph; y++) {
+            const hz = maxHz - y / ph * band;
+            const b = clamp(Math.round((hz - analysis.minHz) * analysis.fftSize / analysis.sampleRate), 0, analysis.bins - 1);
+            const db = analysis.db[f * analysis.bins + b];
+            const c = spectrumColor(frame < 0 || frame >= analysis.frames ? 0 : (db - floors[f] + (view?.gain ?? 0) - 3) / 45), p = (y * pw + x) * 4;
             image.data[p] = c[0];
             image.data[p + 1] = c[1];
             image.data[p + 2] = c[2];
@@ -53,39 +70,58 @@ export function drawSpectrogram(canvas, analysis, candidate) {
     ctx.fillStyle = '#52654f';
     ctx.strokeStyle = '#243d2012';
     ctx.lineWidth = 1;
-    for (let hz = 100; hz <= 500; hz += 100) {
-        const y = top + (maxHz - hz) / (maxHz - analysis.minHz) * ph;
+    const step = band <= 100 ? 20 : band <= 300 ? 50 : band <= 700 ? 100 : 200;
+    for (let hz = Math.ceil(minHz / step) * step; hz < maxHz; hz += step) {
+        const y = top + (maxHz - hz) / band * ph;
         ctx.fillText(String(hz), 8, y + 3);
         ctx.beginPath();
         ctx.moveTo(left, y);
-        ctx.lineTo(w - right, y);
+        ctx.lineTo(left + pw, y);
         ctx.stroke();
     }
     for (let i = 0; i <= 4; i++) {
         const x = left + i * pw / 4;
-        ctx.fillText(`${Math.round(i * analysis.duration / 4)}s`, Math.min(w - 28, x - 5), h - 5);
+        ctx.fillText(`${Math.round(start + i * timeSpan / 4)}s`, Math.min(w - 35, x - 5), h - 5);
     }
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(left, top, pw, ph);
+    ctx.clip();
+    const xy = (p) => [left + (p.t - start) / timeSpan * pw, top + (maxHz - p.hz) / band * ph];
+    const line = (points, gaps = true) => {
+        ctx.beginPath();
+        points.forEach((p, k) => { const [x, y] = xy(p); if (!k || (gaps && p.t - points[k - 1].t > Math.max(1.5, analysis.hopSize / analysis.sampleRate * 3)))
+            ctx.moveTo(x, y);
+        else
+            ctx.lineTo(x, y); });
+        ctx.stroke();
+    };
     const colors = ['#215a3b', '#175e8a', '#784795'];
     analysis.tracks.forEach((track, i) => {
+        ctx.globalAlpha = selectedTracks && !selectedTracks.includes(track.id) ? .25 : 1;
         ctx.strokeStyle = colors[i % 3];
-        ctx.lineWidth = 1.1;
-        ctx.beginPath();
-        track.points.forEach((p, k) => { const x = left + p.t / analysis.duration * pw, y = top + (maxHz - p.hz) / (maxHz - analysis.minHz) * ph; k ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
-        ctx.stroke();
-        const p = track.points[Math.floor(track.points.length * .6)];
+        ctx.lineWidth = 1.2;
+        line(track.points);
+        const p = track.points[Math.floor(track.points.length * .6)], [x, y] = xy(p);
         ctx.fillStyle = colors[i % 3];
-        ctx.fillText(track.id, left + p.t / analysis.duration * pw + 6, top + (maxHz - p.hz) / (maxHz - analysis.minHz) * ph - 8);
+        ctx.fillText(track.id, x + 6, y - 8);
     });
+    ctx.globalAlpha = 1;
     if (candidate)
         candidate.matches.forEach(m => {
             ctx.setLineDash([5, 4]);
             ctx.strokeStyle = '#171f23';
             ctx.lineWidth = 1.5;
-            ctx.beginPath();
-            m.predicted.forEach((p, i) => { const x = left + p.t / analysis.duration * pw, y = top + (maxHz - p.hz) / (maxHz - analysis.minHz) * ph; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
-            ctx.stroke();
+            line(m.predicted);
             ctx.setLineDash([]);
         });
+    ctx.strokeStyle = '#ba5317';
+    ctx.fillStyle = '#ba5317';
+    ctx.lineWidth = 1.5;
+    const sorted = [...anchors].sort((a, b) => a.t - b.t);
+    line(sorted, false);
+    sorted.forEach(p => { const [x, y] = xy(p); ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill(); });
+    ctx.restore();
 }
 /** Illustration only. Never used as analysis data or a result. */
 export function startHeroCanvas(canvas) {

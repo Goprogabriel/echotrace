@@ -1,13 +1,20 @@
 import { clamp, fft, median } from './math.js';
+export const DEFAULT_SIGNAL_OPTIONS = { fftSize: 8192, minHz: 30, maxHz: 1000 };
 /** Deterministic STFT + continuity-constrained tonal-ridge extraction. NOT an aircraft classifier. */
-export function analyzeSignal(samples, sampleRate, progress = () => { }) {
+export function analyzeSignal(samples, sampleRate, progress = () => { }, options = DEFAULT_SIGNAL_OPTIONS) {
     if (!Number.isFinite(sampleRate) || sampleRate < 2000 || sampleRate > 192000)
         throw new Error('Ugyldig samplerate.');
     if (samples.length / sampleRate < 5)
         throw new Error('Vælg mindst 5 sekunders lyd. 30–90 sekunder er bedre.');
-    if (samples.length / sampleRate > 181)
-        throw new Error('Klip optagelsen ned til højst 3 minutter.');
-    const n = 8192, hop = 1024, lo = Math.ceil(30 * n / sampleRate), hi = Math.floor(650 * n / sampleRate);
+    if (samples.length / sampleRate > 1800.1)
+        throw new Error('Klip optagelsen ned til højst 30 minutter.');
+    if (![8192, 16384, 32768].includes(options.fftSize) || !Number.isFinite(options.minHz) || !Number.isFinite(options.maxHz) || options.minHz < 20 || options.maxHz > Math.min(2000, sampleRate / 2) || options.maxHz - options.minHz < 20)
+        throw new Error('Vælg 20–2000 Hz, mindst 20 Hz båndbredde og en gyldig FFT-størrelse.');
+    const n = options.fftSize, lo = Math.ceil(options.minHz * n / sampleRate), hi = Math.floor(options.maxHz * n / sampleRate);
+    let hop = n / 8;
+    // Bound spectrum/DP memory on long recordings and narrow high-resolution views.
+    while (Math.max(0, Math.floor((samples.length - n) / hop) + 1) * (hi - lo + 1) > 4_000_000)
+        hop *= 2;
     const frames = Math.floor((samples.length - n) / hop) + 1, bins = hi - lo + 1;
     if (frames < 2 || bins < 8)
         throw new Error('For lidt lyd til frekvensanalyse.');
@@ -25,12 +32,14 @@ export function analyzeSignal(samples, sampleRate, progress = () => { }) {
         waveform[k] = Math.max(waveform[k], Math.abs(s));
     }
     for (let f = 0; f < frames; f++) {
-        for (let i = 0; i < n; i++)
-            re[i] = (samples[f * hop + i] || 0) * window[i];
+        for (let i = 0; i < n; i++) {
+            const s = samples[f * hop + i];
+            re[i] = (Number.isFinite(s) ? s : 0) * window[i];
+        }
         im.fill(0);
         fft(re, im);
         for (let k = lo; k <= hi; k++)
-            db[f * bins + k - lo] = 20 * Math.log10(Math.max(1e-9, 4 * Math.hypot(re[k], im[k]) / n));
+            db[f * bins + k - lo] = 20 * Math.log10(Math.max(1e-15, 4 * Math.hypot(re[k], im[k]) / n));
         if (f % 30 === 0)
             progress({ phase: 'spectrum', text: `Frekvensvindue ${f + 1} af ${frames}`, progress: .08 + .64 * f / frames });
     }
@@ -68,23 +77,32 @@ function extractRidges(db, frames, bins, lo, sr, n, hop) {
         }
     }
     const tracks = [];
-    for (let attempt = 0; attempt < 7 && tracks.length < 3; attempt++) {
+    for (let attempt = 0; attempt < 10 && tracks.length < 8; attempt++) {
         let prev = new Float64Array(bins), next = new Float64Array(bins);
         const parents = new Int16Array(frames * bins);
         for (let f = 0; f < frames; f++) {
+            // Linear-time L1 distance transform: permits fast curves at higher FFT resolution
+            // without an expensive all-pairs search or a fixed five-bin speed limit.
+            const penalty = .85 * sr / n;
             for (let b = 0; b < bins; b++) {
-                let best = -Infinity, bestB = b;
-                for (let k = Math.max(0, b - 5); k <= Math.min(bins - 1, b + 5); k++) {
-                    const score = prev[k] - .85 * Math.abs(k - b);
-                    if (score > best) {
-                        best = score;
-                        bestB = k;
-                    }
-                }
                 const p = f * bins + b;
-                const emission = masked[p] ? -14 : clamp(prominence[p] - 6, -6, 50);
-                next[b] = best + emission;
-                parents[p] = bestB;
+                next[b] = prev[b];
+                parents[p] = b;
+                if (b > 0 && next[b - 1] - penalty > next[b]) {
+                    next[b] = next[b - 1] - penalty;
+                    parents[p] = parents[p - 1];
+                }
+            }
+            for (let b = bins - 2; b >= 0; b--) {
+                if (next[b + 1] - penalty > next[b]) {
+                    next[b] = next[b + 1] - penalty;
+                    parents[f * bins + b] = parents[f * bins + b + 1];
+                }
+            }
+            for (let b = 0; b < bins; b++) {
+                const p = f * bins + b;
+                const peak = b > 0 && b < bins - 1 && db[p] >= db[p - 1] && db[p] >= db[p + 1];
+                next[b] += masked[p] ? -14 : peak ? clamp(prominence[p] - 6, -6, 50) : -6;
             }
             [prev, next] = [next, prev];
         }
@@ -102,36 +120,76 @@ function extractRidges(db, frames, bins, lo, sr, n, hop) {
             const bin = path[f], p = f * bins + bin;
             for (let k = Math.max(0, bin - 5); k <= Math.min(bins - 1, bin + 5); k++)
                 masked[f * bins + k] = 1;
-            if (prominence[p] < 10 || db[p] < -88 || bin < 2 || bin > bins - 3)
+            // Relative contrast, not an absolute level: weak recordings must remain analyzable.
+            if (prominence[p] < 10 || bin < 2 || bin > bins - 3)
+                continue;
+            // A path beside a broad peak is not another independent tonal measurement.
+            if (db[p] < db[p - 1] || db[p] < db[p + 1])
                 continue;
             const ym = db[p - 1], y0 = db[p], yp = db[p + 1];
             const denom = ym - 2 * y0 + yp;
             const correction = Math.abs(denom) > 1e-6 ? clamp(.5 * (ym - yp) / denom, -.5, .5) : 0;
             points.push({ t: (f * hop + n / 2) / sr, hz: (lo + bin + correction) * sr / n, snr: prominence[p] });
         }
-        if (points.length < 45 || points.length / frames < .55)
-            continue;
-        const fifth = Math.max(4, Math.floor(points.length / 5));
-        const first = median(points.slice(0, fifth).map(p => p.hz)), last = median(points.slice(-fifth).map(p => p.hz));
-        const drift = first - last, span = points.at(-1).t - points[0].t;
-        if (span < 8 || drift < Math.max(3.5, first * .025))
-            continue;
-        // Reject very jumpy tracks and near-identical harmonic copies. This is a heuristic, not ground truth.
-        const jumps = points.slice(1).filter((p, i) => Math.abs(p.hz - points[i].hz) / Math.max(.1, p.t - points[i].t) > 35).length;
-        if (jumps / points.length > .08)
-            continue;
-        const duplicate = tracks.some(track => {
-            const ratios = points.filter((_, i) => i % 8 === 0).map(p => {
-                const q = track.points.reduce((a, c) => Math.abs(c.t - p.t) < Math.abs(a.t - p.t) ? c : a);
-                return p.hz / q.hz;
+        // Separate passages in a long recording. Do not bridge silence or unrelated tones.
+        const segments = [];
+        for (const p of points) {
+            const segment = segments.at(-1), last = segment?.at(-1);
+            if (!last || p.t - last.t > Math.max(1.5, 3 * hop / sr) || Math.abs(p.hz - last.hz) / (p.t - last.t) > 35)
+                segments.push([p]);
+            else
+                segment.push(p);
+        }
+        for (const points of segments) {
+            if (points.length < 25)
+                continue;
+            const fifth = Math.max(4, Math.floor(points.length / 5));
+            const first = median(points.slice(0, fifth).map(p => p.hz)), last = median(points.slice(-fifth).map(p => p.hz));
+            const drift = first - last, span = points.at(-1).t - points[0].t;
+            if (span < 8 || points.length / (span * sr / hop + 1) < .6 || drift < Math.max(3.5, first * .025))
+                continue;
+            // Reject very jumpy tracks and near-identical harmonic copies. This is a heuristic, not ground truth.
+            const jumps = points.slice(1).filter((p, i) => Math.abs(p.hz - points[i].hz) / Math.max(.1, p.t - points[i].t) > 35).length;
+            if (jumps / points.length > .08)
+                continue;
+            const duplicate = tracks.some(track => {
+                const overlap = Math.max(0, Math.min(track.end, points.at(-1).t) - Math.max(track.start, points[0].t));
+                if (overlap < .6 * Math.min(track.end - track.start, span))
+                    return false;
+                const ratios = points.filter((p, i) => i % 8 === 0 && p.t >= track.start && p.t <= track.end).map(p => {
+                    const q = track.points.reduce((a, c) => Math.abs(c.t - p.t) < Math.abs(a.t - p.t) ? c : a);
+                    return p.hz / q.hz;
+                });
+                const ratio = median(ratios), deviation = median(ratios.map(x => Math.abs(x - ratio))) / ratio;
+                return deviation < .008 && [1, 2, 3, .5, 1 / 3].some(k => Math.abs(ratio - k) < .035 * k);
             });
-            const ratio = median(ratios), deviation = median(ratios.map(x => Math.abs(x - ratio))) / ratio;
-            return deviation < .008 && [1, 2, 3, .5, 1 / 3].some(k => Math.abs(ratio - k) < .035 * k);
-        });
-        if (duplicate)
-            continue;
-        tracks.push({ id: `S${tracks.length + 1}`, points, coverage: points.length / frames, driftHz: drift,
-            medianSnr: median(points.map(p => p.snr)), start: points[0].t, end: points.at(-1).t });
+            if (duplicate)
+                continue;
+            tracks.push({ id: `S${tracks.length + 1}`, source: 'auto', points, coverage: points.length / frames, driftHz: drift,
+                medianSnr: median(points.map(p => p.snr)), start: points[0].t, end: points.at(-1).t });
+            if (tracks.length === 8)
+                break;
+        }
     }
     return tracks;
+}
+/** User measurements, linearly interpolated for curve fitting; never automatic detections. */
+export function manualRidge(anchors, analysis, id) {
+    const sorted = anchors.map(p => ({ ...p })).sort((a, b) => a.t - b.t);
+    if (sorted.length < 3 || sorted.some((p, i) => !Number.isFinite(p.t) || !Number.isFinite(p.hz) || p.t < 0 || p.t > analysis.duration || p.hz < analysis.minHz || p.hz > analysis.maxHz || (i > 0 && p.t - sorted[i - 1].t < .01)))
+        throw new Error('Markér mindst tre punkter med forskellige tider inden for spektrogrammet.');
+    const start = sorted[0].t, end = sorted.at(-1).t;
+    if (end - start < 8)
+        throw new Error('Et manuelt spor skal dække mindst 8 sekunder.');
+    const points = [];
+    const count = Math.min(512, Math.max(32, Math.ceil((end - start) * analysis.sampleRate / analysis.hopSize)));
+    let j = 1;
+    for (let i = 0; i <= count; i++) {
+        const t = start + (end - start) * i / count;
+        while (j < sorted.length - 1 && sorted[j].t < t)
+            j++;
+        const a = sorted[j - 1], b = sorted[j];
+        points.push({ t, hz: a.hz + (b.hz - a.hz) * (t - a.t) / (b.t - a.t), snr: 12 });
+    }
+    return { id, source: 'manual', anchors: sorted, points, start, end, coverage: (end - start) / analysis.duration, driftHz: sorted[0].hz - sorted.at(-1).hz, medianSnr: 12 };
 }

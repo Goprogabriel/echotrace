@@ -1,10 +1,10 @@
 export const MAX_MEDIA_BYTES = 150 * 1024 * 1024;
-export const MAX_DURATION = 180;
+export const MAX_DURATION = 1800;
 export function validateMedia(file) {
     if (!file.size)
         throw new Error('Filen er tom.');
     if (file.size > MAX_MEDIA_BYTES)
-        throw new Error('Filen er for stor. Brug et klip på højst 150 MB og 3 minutter.');
+        throw new Error('Filen er for stor. Brug et klip på højst 150 MB og 30 minutter.');
     if (!/\.(mp4|mov|m4v|webm|wav|mp3|m4a|ogg|flac|aac)$/i.test(file.name) && !/^(video|audio)\//.test(file.type))
         throw new Error('Vælg en video- eller lydfil, fx MP4, MOV, WebM eller WAV.');
 }
@@ -27,7 +27,7 @@ export async function decodeMedia(file, progress, signal) {
     if (signal.aborted)
         throw new DOMException('Annulleret', 'AbortError');
     if (decoded.duration > MAX_DURATION + .1)
-        throw new Error('Optagelsen er længere end 3 minutter. Klip den ned først, så analysen ikke overbelaster din browser.');
+        throw new Error('Optagelsen er længere end 30 minutter. Klip den ned først, så analysen ikke overbelaster din browser.');
     if (decoded.duration < 5)
         throw new Error('Vælg en optagelse med mindst 5 sekunders lyd.');
     // Use the strongest channel: averaging opposite-polarity stereo can cancel a useful low tone.
@@ -60,6 +60,7 @@ export async function captureMedia(file, progress, signal) {
     media.src = URL.createObjectURL(file);
     const chunks = [];
     let node, count = 0;
+    let onFlushed;
     try {
         await audio.audioWorklet.addModule(new URL('../workers/capture-worklet.js', import.meta.url));
         if (media.readyState < 1)
@@ -69,15 +70,17 @@ export async function captureMedia(file, progress, signal) {
                 media.onerror = () => { clearTimeout(timer); reject(new Error('Browseren kan ikke afspille dette videoformat.')); };
             });
         if (!Number.isFinite(media.duration) || media.duration > MAX_DURATION || media.duration < 5)
-            throw new Error('Afspilningsudtræk kræver et klip på 5–180 sekunder.');
+            throw new Error('Afspilningsudtræk kræver et klip på 5 sekunder–30 minutter.');
         node = new AudioWorkletNode(audio, 'local-pcm-capture');
         const source = audio.createMediaElementSource(media);
         source.connect(node);
         node.connect(audio.destination);
         node.port.onmessage = e => {
+            if (e.data === 'flushed')
+                onFlushed?.();
             if (e.data instanceof Float32Array) {
                 count += e.data.length;
-                if (count <= audio.sampleRate * 183)
+                if (count <= audio.sampleRate * (MAX_DURATION + 3))
                     chunks.push(e.data);
             }
         };
@@ -91,7 +94,7 @@ export async function captureMedia(file, progress, signal) {
                 return;
             }
             media.ontimeupdate = () => progress({ phase: 'capture', text: `Udtrækker lyd under lydløs afspilning · ${Math.floor(media.currentTime)} / ${Math.ceil(media.duration)} s`, progress: .02 + .08 * media.currentTime / media.duration });
-            media.onended = () => { cleanup(); node?.port.postMessage('flush'); setTimeout(resolve, 80); };
+            media.onended = () => { onFlushed = () => { cleanup(); resolve(); }; node?.port.postMessage('flush'); };
             node?.port.postMessage('start');
             media.play().catch(e => { cleanup(); reject(e); });
         });

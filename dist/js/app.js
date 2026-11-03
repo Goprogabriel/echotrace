@@ -5,7 +5,8 @@ import { initialState, isBusy } from './state.js';
 import { captureMedia, decodeMedia, validateMedia } from './core/audio.js';
 import { fetchFlights, importFlights, parseDataset } from './core/data.js';
 import { startReveals } from './components/ui.js';
-import { drawIllustrationSpectrum, drawSpectrogram, drawWaveform, startHeroCanvas } from './components/visuals.js';
+import { drawIllustrationSpectrum, drawSpectrogram, drawWaveform, startHeroCanvas, spectrumBounds } from './components/visuals.js';
+import { manualRidge } from './core/signal.js';
 import { mountMap } from './components/map.js';
 const root = document.querySelector('#app');
 const fileInput = document.querySelector('#media-input');
@@ -13,6 +14,7 @@ const dataInput = document.querySelector('#data-input');
 let state = initialState(), cleanups = [];
 let worker = null, controller = new AbortController(), job = 0;
 let toastTimer;
+let pcm = null;
 const route = () => location.hash.split('?')[0] || '#/';
 function toast(message) {
     const el = document.querySelector('#toast');
@@ -52,7 +54,7 @@ function initLab() {
     const draw = () => {
         const spectrum = root.querySelector('#lab-spectrum');
         if (spectrum && state.analysis)
-            drawSpectrogram(spectrum, state.analysis);
+            drawSpectrogram(spectrum, state.analysis, undefined, state.spectrumView, state.selectedTracks, state.anchors);
         const wave = root.querySelector('#waveform'), values = state.analysis?.waveform || state.waveform;
         if (wave && values)
             drawWaveform(wave, values);
@@ -64,6 +66,21 @@ function initLab() {
     root.querySelectorAll('canvas').forEach(c => observer.observe(c));
     cleanups.push(() => observer.disconnect());
     draw();
+    const spectrum = root.querySelector('#lab-spectrum');
+    if (spectrum)
+        spectrum.onclick = e => {
+            if (!state.tracing || isBusy(state) || !state.analysis)
+                return;
+            const rect = spectrum.getBoundingClientRect(), b = spectrumBounds(rect.width, rect.height), x = e.clientX - rect.left - b.left, y = e.clientY - rect.top - b.top;
+            if (x < 0 || x > b.width || y < 0 || y > b.height)
+                return;
+            const v = state.spectrumView;
+            state.anchors.push({ t: v.start + x / b.width * (v.end - v.start), hz: v.maxHz - y / b.height * (v.maxHz - v.minHz) });
+            render();
+        };
+    root.querySelector('[name="view-gain"]')?.addEventListener('input', e => { state.spectrumView.gain = Number(e.target.value); draw(); });
+    if (isBusy(state))
+        root.querySelectorAll('#signal-controls input,#signal-controls select,#signal-controls button').forEach(el => el.disabled = true);
     if (state.result && state.config && state.dataset) {
         const map = root.querySelector('#result-map');
         if (map)
@@ -141,6 +158,7 @@ async function analyzeFile(file, demo, capture = false) {
     try {
         validateMedia(file);
         if (!capture) {
+            pcm = null;
             if (state.blobUrl)
                 URL.revokeObjectURL(state.blobUrl);
             state = initialState();
@@ -164,6 +182,7 @@ async function analyzeFile(file, demo, capture = false) {
         const decoded = await (capture ? captureMedia(file, updateProgress, controller.signal) : decodeMedia(file, updateProgress, controller.signal));
         if (id !== job)
             return;
+        pcm = decoded.samples.slice();
         state.decoded = { sampleRate: decoded.sampleRate, duration: decoded.duration, channels: decoded.channels, method: decoded.method, warnings: decoded.warnings };
         state.waveform = new Float32Array(700);
         for (let i = 0; i < decoded.samples.length; i++) {
@@ -192,6 +211,10 @@ function runSignalWorker(decoded, id) {
             fail(new Error(e.data.message), id);
         if (e.data.type === 'analysis') {
             state.analysis = e.data.data;
+            state.selectedTracks = state.analysis.tracks.slice(0, 3).map(t => t.id);
+            state.spectrumView = { start: 0, end: state.analysis.duration, minHz: state.analysis.minHz, maxHz: state.analysis.maxHz, gain: 0 };
+            state.anchors = [];
+            state.tracing = false;
             state.stage = 'ready';
             worker?.terminate();
             worker = null;
@@ -202,7 +225,7 @@ function runSignalWorker(decoded, id) {
                 root.querySelector('#search-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
     };
-    worker.postMessage({ type: 'analyze', samples: decoded.samples, sampleRate: decoded.sampleRate }, [decoded.samples.buffer]);
+    worker.postMessage({ type: 'analyze', samples: decoded.samples, sampleRate: decoded.sampleRate, options: state.signalOptions }, [decoded.samples.buffer]);
 }
 function getConfig() {
     const f = state.form;
@@ -212,8 +235,8 @@ function getConfig() {
     if (!Number.isFinite(date) || date < 946684800 || date > 4133980800)
         throw new Error('Angiv en gyldig optagelsestid mellem år 2000 og 2100.');
     const config = { lat: Number(f.lat), lon: Number(f.lon), radiusKm: Number(f.radius), startTime: date, clockUncertainty: Number(f.clock), receiverAltitudeM: Number(f.altitude), soundSpeed: Number(f.sound) };
-    if (!Object.values(config).every(Number.isFinite) || Math.abs(config.lat) > 80 || Math.abs(config.lon) > 180 || config.radiusKm < 1 || config.radiusKm > 30 || config.clockUncertainty < 0 || config.clockUncertainty > 60 || config.receiverAltitudeM < -400 || config.receiverAltitudeM > 9000 || config.soundSpeed < 300 || config.soundSpeed > 370)
-        throw new Error('Kontrollér koordinater, radius (1–30 km), urusikkerhed, mikrofonhøjde og lydhastighed.');
+    if (!Object.values(config).every(Number.isFinite) || Math.abs(config.lat) > 80 || Math.abs(config.lon) > 180 || config.radiusKm < 1 || config.radiusKm > 50 || config.clockUncertainty < 0 || config.clockUncertainty > 60 || config.receiverAltitudeM < -400 || config.receiverAltitudeM > 9000 || config.soundSpeed < 300 || config.soundSpeed > 370)
+        throw new Error('Kontrollér koordinater, radius (1–50 km), urusikkerhed, mikrofonhøjde og lydhastighed.');
     return config;
 }
 async function runMatching() {
@@ -222,8 +245,9 @@ async function runMatching() {
     stopJob();
     const id = job;
     try {
-        if (!state.analysis.tracks.length)
-            throw new Error('Der blev ikke fundet et brugbart tonalt spor at matche.');
+        const tracks = state.analysis.tracks.filter(t => state.selectedTracks.includes(t.id));
+        if (!tracks.length || tracks.length > 3)
+            throw new Error('Vælg mellem ét og tre tonale spor til søgningen.');
         if (!state.consent)
             throw new Error('Bekræft, at du har ret til at undersøge denne optagelse.');
         const config = getConfig();
@@ -243,7 +267,7 @@ async function runMatching() {
             state.dataset = dataset;
         }
         state.stage = 'matching';
-        state.progress = { phase: 'matching', text: `Sammenligner ${state.analysis.tracks.length} spor med ${state.dataset.flights.length} flybaner`, progress: .02 };
+        state.progress = { phase: 'matching', text: `Sammenligner ${tracks.length} spor med ${state.dataset.flights.length} flybaner`, progress: .02 };
         render();
         root.querySelector('.processing-panel')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         worker = new Worker(new URL('./workers/analysis.worker.js', import.meta.url), { type: 'module' });
@@ -264,7 +288,7 @@ async function runMatching() {
                 root.querySelector('#results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         };
-        worker.postMessage({ type: 'match', tracks: state.analysis.tracks, flights: state.dataset.flights, config });
+        worker.postMessage({ type: 'match', tracks, flights: state.dataset.flights, config });
     }
     catch (error) {
         fail(error, id);
@@ -289,7 +313,7 @@ function exportReport() {
     const report = { schema: 'echotrace-report/1', engineVersion: '0.1.0', exportedAt: new Date().toISOString(), synthetic: state.demo || state.dataset?.synthetic,
         disclaimer: 'Experimental hypotheses, not verified locations. Scores are frequency errors, not probabilities. No calibrated position accuracy. Do not identify a person from this report.',
         file: { name: state.file?.name, size: state.file?.size, type: state.file?.type }, decoding: state.decoded, search: state.config,
-        signal: { duration: state.analysis.duration, sampleRate: state.analysis.sampleRate, fftSize: state.analysis.fftSize, hopSize: state.analysis.hopSize, tracks: state.analysis.tracks, warnings: state.analysis.warnings },
+        signal: { duration: state.analysis.duration, sampleRate: state.analysis.sampleRate, fftSize: state.analysis.fftSize, hopSize: state.analysis.hopSize, minHz: state.analysis.minHz, maxHz: state.analysis.maxHz, tracks: state.analysis.tracks, selectedTracks: state.selectedTracks, warnings: state.analysis.warnings },
         data: { source: state.dataset?.source, license: state.dataset?.license, fetchedAt: state.dataset?.fetchedAt, flightCount: state.dataset?.flights.length, warnings: state.dataset?.warnings }, result: state.result };
     const url = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }));
     const a = document.createElement('a');
@@ -299,12 +323,98 @@ function exportReport() {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     toast('Rapporten indeholder tid og kandidatområder. Del den med omtanke.');
 }
+function invalidateResult() { state.result = null; state.stage = state.analysis ? 'ready' : state.stage; state.error = ''; }
+function signalAction(action) {
+    const a = state.analysis;
+    if (!a || isBusy(state))
+        return;
+    const value = (name) => { const el = root.querySelector(`[name="${name}"]`); return el?.value.trim() ? Number(el.value) : NaN; };
+    try {
+        if (action === 'spectrum-view') {
+            const start = value('view-start'), end = value('view-end'), minHz = value('view-min'), maxHz = value('view-max');
+            if (![start, end, minHz, maxHz].every(Number.isFinite) || start < 0 || end > a.duration || end - start < 1 || minHz < a.minHz || maxHz > a.maxHz || maxHz - minHz < 5)
+                throw new Error('Vælg mindst 1 sekund og 5 Hz inden for den analyserede tid og frekvens.');
+            state.spectrumView = { ...state.spectrumView, start, end, minHz, maxHz };
+        }
+        else if (action === 'spectrum-reset')
+            state.spectrumView = { start: 0, end: a.duration, minHz: a.minHz, maxHz: a.maxHz, gain: 0 };
+        else if (action === 'trace-toggle') {
+            state.tracing = !state.tracing;
+            state.anchors = [];
+        }
+        else if (action === 'trace-add') {
+            const t = value('trace-time'), hz = value('trace-hz');
+            if (![t, hz].every(Number.isFinite) || t < 0 || t > a.duration || hz < a.minHz || hz > a.maxHz)
+                throw new Error('Indtast tid og frekvens inden for det analyserede spektrogram.');
+            state.anchors.push({ t, hz });
+        }
+        else if (action === 'trace-undo')
+            state.anchors.pop();
+        else if (action === 'trace-save') {
+            let i = 1;
+            while (a.tracks.some(t => t.id === `M${i}`))
+                i++;
+            const track = manualRidge(state.anchors, a, `M${i}`);
+            a.tracks.push(track);
+            if (state.selectedTracks.length < 3)
+                state.selectedTracks.push(track.id);
+            else
+                toast('Sporet er gemt. Fravælg et andet spor for at bruge det i søgningen.');
+            state.tracing = false;
+            state.anchors = [];
+            invalidateResult();
+        }
+        else if (action === 'reanalyze') {
+            if (!pcm || !state.decoded)
+                throw new Error('Åbn optagelsen igen for at genanalysere.');
+            const fftSize = value('signal-fft'), minHz = value('signal-min'), maxHz = value('signal-max');
+            if (![8192, 16384, 32768].includes(fftSize) || ![minHz, maxHz].every(Number.isFinite) || minHz < 20 || maxHz > 2000 || maxHz - minHz < 20)
+                throw new Error('Vælg et analysebånd inden for 20–2000 Hz, mindst 20 Hz bredt.');
+            stopJob();
+            state.signalOptions = { fftSize, minHz, maxHz };
+            invalidateResult();
+            state.stage = 'analyzing';
+            state.progress = { phase: 'spectrum', text: 'Genanalyserer den lokale lyd', progress: .01 };
+            render();
+            runSignalWorker({ ...state.decoded, samples: pcm.slice() }, job);
+            return;
+        }
+        render();
+    }
+    catch (error) {
+        toast(error instanceof Error ? error.message : 'Kontrollér lydindstillingerne.');
+    }
+}
 root.addEventListener('click', e => {
-    const target = e.target.closest('[data-action],[data-scroll],[data-preset],[data-candidate]');
+    const target = e.target.closest('[data-action],[data-scroll],[data-preset],[data-candidate],[data-track-zoom],[data-track-delete]');
     if (!target)
         return;
     if (target.hasAttribute('disabled'))
         return;
+    if (target.closest('#signal-controls')) {
+        if (isBusy(state))
+            return;
+        if (target.dataset.trackZoom && state.analysis) {
+            const t = state.analysis.tracks.find(t => t.id === target.dataset.trackZoom);
+            if (!t)
+                return;
+            const margin = Math.max(10, Math.abs(t.driftHz) * .2), hz = t.points.map(p => p.hz);
+            state.spectrumView = { ...state.spectrumView, start: Math.max(0, t.start - 2), end: Math.min(state.analysis.duration, t.end + 2), minHz: Math.max(state.analysis.minHz, Math.min(...hz) - margin), maxHz: Math.min(state.analysis.maxHz, Math.max(...hz) + margin) };
+            render();
+            return;
+        }
+        if (target.dataset.trackDelete && state.analysis) {
+            state.analysis.tracks = state.analysis.tracks.filter(t => t.id !== target.dataset.trackDelete || t.source !== 'manual');
+            state.selectedTracks = state.selectedTracks.filter(id => state.analysis.tracks.some(t => t.id === id));
+            invalidateResult();
+            render();
+            return;
+        }
+        if (target.dataset.action) {
+            signalAction(target.dataset.action);
+            return;
+        }
+    }
     if (target.dataset.scroll) {
         const go = () => root.querySelector(`#${target.dataset.scroll}`)?.scrollIntoView({ behavior: 'smooth' });
         if (route() !== '#/') {
@@ -370,6 +480,8 @@ root.addEventListener('click', e => {
 });
 root.addEventListener('input', e => {
     const el = e.target;
+    if (el.closest('#signal-controls'))
+        return;
     if (!el.name)
         return;
     if (el.name === 'consent')
@@ -378,6 +490,19 @@ root.addEventListener('input', e => {
         state.network = el.checked;
     else
         state.form[el.name] = el.value;
+});
+root.addEventListener('change', e => {
+    const el = e.target;
+    if (!el.dataset.track || isBusy(state))
+        return;
+    if (el.checked && state.selectedTracks.length >= 3) {
+        el.checked = false;
+        toast('Vælg højst tre spor ad gangen.');
+        return;
+    }
+    state.selectedTracks = el.checked ? [...state.selectedTracks, el.dataset.track] : state.selectedTracks.filter(id => id !== el.dataset.track);
+    invalidateResult();
+    render();
 });
 root.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.id === 'dropzone') {
     e.preventDefault();

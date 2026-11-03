@@ -1,9 +1,9 @@
 import type {DecodedAudio, ProgressFn} from '../types.js';
 export const MAX_MEDIA_BYTES = 150 * 1024 * 1024;
-export const MAX_DURATION = 180;
+export const MAX_DURATION = 1800;
 export function validateMedia(file: File): void {
   if (!file.size) throw new Error('Filen er tom.');
-  if (file.size > MAX_MEDIA_BYTES) throw new Error('Filen er for stor. Brug et klip på højst 150 MB og 3 minutter.');
+  if (file.size > MAX_MEDIA_BYTES) throw new Error('Filen er for stor. Brug et klip på højst 150 MB og 30 minutter.');
   if (!/\.(mp4|mov|m4v|webm|wav|mp3|m4a|ogg|flac|aac)$/i.test(file.name) && !/^(video|audio)\//.test(file.type)) throw new Error('Vælg en video- eller lydfil, fx MP4, MOV, WebM eller WAV.');
 }
 export async function decodeMedia(file: File, progress: ProgressFn, signal: AbortSignal): Promise<DecodedAudio> {
@@ -17,7 +17,7 @@ export async function decodeMedia(file: File, progress: ProgressFn, signal: Abor
   try { decoded = await context.decodeAudioData(bytes); }
   catch { throw new Error('Browseren kan ikke åbne dette lydformat direkte. Prøv “Udtræk under afspilning”, eller vælg en WAV/MP4 med understøttet lyd.'); }
   if (signal.aborted) throw new DOMException('Annulleret', 'AbortError');
-  if (decoded.duration > MAX_DURATION + .1) throw new Error('Optagelsen er længere end 3 minutter. Klip den ned først, så analysen ikke overbelaster din browser.');
+  if (decoded.duration > MAX_DURATION + .1) throw new Error('Optagelsen er længere end 30 minutter. Klip den ned først, så analysen ikke overbelaster din browser.');
   if (decoded.duration < 5) throw new Error('Vælg en optagelse med mindst 5 sekunders lyd.');
   // Use the strongest channel: averaging opposite-polarity stereo can cancel a useful low tone.
   let best = 0, energy = -1;
@@ -39,6 +39,7 @@ export async function captureMedia(file: File, progress: ProgressFn, signal: Abo
   media.playsInline = true; media.preload = 'auto'; media.src = URL.createObjectURL(file);
   const chunks: Float32Array[] = [];
   let node: AudioWorkletNode | undefined, count = 0;
+  let onFlushed: (() => void) | undefined;
   try {
     await audio.audioWorklet.addModule(new URL('../workers/capture-worklet.js', import.meta.url));
     if (media.readyState < 1) await new Promise<void>((resolve, reject) => {
@@ -46,11 +47,12 @@ export async function captureMedia(file: File, progress: ProgressFn, signal: Abo
       media.onloadedmetadata = () => { clearTimeout(timer); resolve(); };
       media.onerror = () => { clearTimeout(timer); reject(new Error('Browseren kan ikke afspille dette videoformat.')); };
     });
-    if (!Number.isFinite(media.duration) || media.duration > MAX_DURATION || media.duration < 5) throw new Error('Afspilningsudtræk kræver et klip på 5–180 sekunder.');
+    if (!Number.isFinite(media.duration) || media.duration > MAX_DURATION || media.duration < 5) throw new Error('Afspilningsudtræk kræver et klip på 5 sekunder–30 minutter.');
     node = new AudioWorkletNode(audio, 'local-pcm-capture');
     const source = audio.createMediaElementSource(media); source.connect(node); node.connect(audio.destination);
     node.port.onmessage = e => {
-      if (e.data instanceof Float32Array) { count += e.data.length; if (count <= audio.sampleRate * 183) chunks.push(e.data); }
+      if (e.data === 'flushed') onFlushed?.();
+      if (e.data instanceof Float32Array) { count += e.data.length; if (count <= audio.sampleRate * (MAX_DURATION + 3)) chunks.push(e.data); }
     };
     await new Promise<void>((resolve, reject) => {
       const abort = () => { cleanup(); reject(new DOMException('Annulleret', 'AbortError')); };
@@ -59,7 +61,7 @@ export async function captureMedia(file: File, progress: ProgressFn, signal: Abo
       signal.addEventListener('abort', abort, {once: true});
       if (signal.aborted) {abort(); return;}
       media.ontimeupdate = () => progress({phase: 'capture', text: `Udtrækker lyd under lydløs afspilning · ${Math.floor(media.currentTime)} / ${Math.ceil(media.duration)} s`, progress: .02 + .08 * media.currentTime / media.duration});
-      media.onended = () => {cleanup(); node?.port.postMessage('flush'); setTimeout(resolve, 80);};
+      media.onended = () => { onFlushed = () => { cleanup(); resolve(); }; node?.port.postMessage('flush'); };
       node?.port.postMessage('start');
       media.play().catch(e => {cleanup(); reject(e);});
     });

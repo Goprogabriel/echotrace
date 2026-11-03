@@ -37,6 +37,8 @@ export function matchFlights(tracks, flights, config, progress = () => { }) {
     const start = performance.now();
     if (!tracks.length)
         throw new Error('Der er ingen tonale spor at matche.');
+    if (tracks.length > 3)
+        throw new Error('Vælg højst tre spor til én søgning.');
     if (!flights.length)
         throw new Error('Datasættet indeholder ingen anvendelige flybaner.');
     if (flights.length > 100)
@@ -45,7 +47,7 @@ export function matchFlights(tracks, flights, config, progress = () => { }) {
         throw new Error('Ugyldige søgeparametre.');
     if (Math.abs(config.lat) > 80 || Math.abs(config.lon) > 180 || config.radiusKm < 1 || config.radiusKm > 50 || config.clockUncertainty < 0 || config.clockUncertainty > 60 || config.soundSpeed < 300 || config.soundSpeed > 370 || Math.abs(config.receiverAltitudeM) > 9000)
         throw new Error('Søgeparametrene ligger uden for modellens grænser.');
-    const prepared = flights.map(prepareFlight), selected = tracks.slice(0, 3);
+    const prepared = flights.map(prepareFlight), selected = tracks;
     const offsets = config.clockUncertainty ? [-1, -.5, 0, .5, 1].map(v => v * config.clockUncertainty) : [0];
     const step = config.radiusKm * 1000 / 8, grid = [];
     const coarse = [];
@@ -133,6 +135,8 @@ export function matchFlights(tracks, flights, config, progress = () => { }) {
         'Der søges kun i det valgte område og tidsinterval. Et bedre match kan eksistere udenfor.',
         'Modellen antager en stationær mikrofon, en konstant motortone og ensartet, vindstille luft.',
         'ADS-B-højder, lydens hastighed og ukendt kameratid kan give systematiske fejl. Gridafstand er ikke en sikkerhedsradius.'];
+    if (selected.some(t => t.source === 'manual'))
+        warnings.push('Manuelle spor bygger på brugerens optegnede punkter med lineær interpolation. Et match bekræfter ikke, at kurven findes i lyden.');
     if (candidates[0]?.matchedFlights === 1)
         warnings.push('Kun én uafhængig flybane matcher. Spejlede og aflange løsningsområder kan ikke udelukkes.');
     if (candidates.filter(c => c.accepted).length > 1)

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {fft,haversine,offsetPosition} from '../dist/js/core/math.js';
-import {analyzeSignal} from '../dist/js/core/signal.js';
+import {analyzeSignal,manualRidge} from '../dist/js/core/signal.js';
 import {dopplerFactor,ecef,prepareFlight,interpolate} from '../dist/js/core/physics.js';
 import {matchFlights} from '../dist/js/core/matcher.js';
 import {parseDataset,parseCsv,parseProvider,epochSeconds,buildQuery} from '../dist/js/core/data.js';
@@ -29,3 +29,64 @@ test('Matcher recovers a nearby synthetic hypothesis without reading ground trut
 test('No timestamp overlap produces no location pin',()=>{analysis??=analyzeSignal(wav(),8000);const r=matchFlights(analysis.tracks,dataset.flights,{...config,startTime:config.startTime+86400});assert.equal(r.candidates.length,0);assert(r.warnings.some(w=>w.includes('Ingen kandidater')));});
 test('Matcher rejects missing data and unreasonable parameters',()=>{assert.throws(()=>matchFlights([],dataset.flights,config));analysis??=analyzeSignal(wav(),8000);assert.throws(()=>matchFlights(analysis.tracks,[],config));assert.throws(()=>matchFlights(analysis.tracks,dataset.flights,{...config,radiusKm:200}));assert.throws(()=>matchFlights(analysis.tracks,dataset.flights,{...config,lat:NaN}));});
 test('Local metric offset and Haversine agree to within two metres',()=>{assert(Math.abs(haversine(config,offsetPosition(config.lat,config.lon,1000,0))-1000)<2);});
+
+test('Very quiet audio keeps its Doppler tracks without an absolute dB cutoff',()=>{
+  const quiet=wav().map(s=>s*1e-5), a=analyzeSignal(quiet,8000);
+  assert.equal(a.tracks.length,2);
+  assert(a.tracks.every(t=>t.driftHz>30));
+});
+test('Separate passages in the same frequency band survive a long silent interval',()=>{
+  const sr=8000,pcm=new Float32Array(sr*140);
+  for(const start of [15,100]){
+    let phase=0;
+    for(let i=0;i<sr*25;i++){
+      const t=i/sr,hz=165-55*t/25;
+      phase+=2*Math.PI*hz/sr;
+      pcm[Math.round(start*sr)+i]=.03*Math.sin(phase)*Math.sin(Math.PI*t/25)**2;
+    }
+  }
+  const a=analyzeSignal(pcm,sr);
+  assert.equal(a.tracks.length,2);
+  const events=[...a.tracks].sort((a,b)=>a.start-b.start);
+  assert(events[0].end<50);assert(events[1].start>90);
+  assert(events.every(t=>t.coverage<.3));
+});
+test('Resolution and band are configurable and non-finite samples cannot poison FFTs',()=>{
+  const pcm=wav();pcm[10]=NaN;pcm[100]=Infinity;
+  const a=analyzeSignal(pcm,8000,()=>{},{fftSize:16384,minHz:70,maxHz:450});
+  assert.equal(a.fftSize,16384);assert(a.minHz>=70&&a.maxHz<=450);
+  assert(a.db.every(Number.isFinite));assert(a.tracks.length>=1);
+  assert.throws(()=>analyzeSignal(pcm,8000,()=>{},{fftSize:1000,minHz:30,maxHz:500}));
+});
+test('A recording with events 920 seconds apart preserves the original event times',()=>{
+  const sr=2000,pcm=new Float32Array(sr*980);
+  for(const start of [10,930]){
+    let phase=0;
+    for(let i=0;i<sr*30;i++){
+      const t=i/sr;phase+=2*Math.PI*(220-50*t/30)/sr;
+      pcm[start*sr+i]=.02*Math.sin(phase)*Math.sin(Math.PI*t/30)**2;
+    }
+  }
+  const a=analyzeSignal(pcm,sr,()=>{},{fftSize:8192,minHz:100,maxHz:300});
+  assert.equal(a.tracks.length,2);
+  const events=[...a.tracks].sort((a,b)=>a.start-b.start);
+  assert(Math.abs(events[1].start-events[0].start-920)<2);
+  assert(a.db.length<=4_000_000);
+});
+
+test('Manual tracing retains measured anchors, absolute audio times and provenance',()=>{
+  analysis??=analyzeSignal(wav(),8000);
+  const anchors=[{t:40,hz:110},{t:10,hz:160},{t:25,hz:140}];
+  const track=manualRidge(anchors,analysis,'M1');
+  assert.equal(track.source,'manual');assert.equal(track.start,10);assert.equal(track.end,40);
+  assert.deepEqual(track.anchors,[anchors[1],anchors[2],anchors[0]]);
+  assert.deepEqual(track.points[0],{t:10,hz:160,snr:12});
+  assert.equal(track.points.at(-1).hz,110);assert(track.points.length>=32);
+  assert.throws(()=>manualRidge([{t:1,hz:100},{t:1,hz:90},{t:20,hz:70}],analysis,'M2'));
+  assert.throws(()=>manualRidge([{t:1,hz:100},{t:2,hz:90},{t:3,hz:70}],analysis,'M2'));
+  assert.throws(()=>manualRidge([{t:-1,hz:100},{t:2,hz:90},{t:30,hz:70}],analysis,'M2'));
+});
+test('Matcher refuses more than three selected tracks instead of silently dropping events',()=>{
+  analysis??=analyzeSignal(wav(),8000);
+  assert.throws(()=>matchFlights([...analysis.tracks,...analysis.tracks],dataset.flights,config),/højst tre/);
+});

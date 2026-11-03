@@ -5,7 +5,7 @@ scope.onmessage = (event) => {
     try {
         const progress = (data) => scope.postMessage({ type: 'progress', data });
         if (event.data.type === 'analyze') {
-            const result = analyzeSignal(event.data.samples, event.data.sampleRate, progress);
+            const result = analyzeSignal(event.data.samples, event.data.sampleRate, progress, event.data.options);
             scope.postMessage({ type: 'analysis', data: result }, [result.db.buffer, result.waveform.buffer]);
         }
         else if (event.data.type === 'match') {
