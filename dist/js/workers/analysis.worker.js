@@ -1,4 +1,5 @@
 import { analyzeSignal, analyzeSignalAdaptive } from '../core/signal.js';
+import { validateSpectralSupport } from '../core/spectral-support.js';
 import { matchFlights } from '../core/matcher.js';
 import { matchGlobalFlights } from '../core/global-search.js';
 const scope = self;
@@ -12,6 +13,8 @@ scope.onmessage = (event) => {
         }
         else if (event.data.type === 'match') {
             const result = (event.data.config.global ? matchGlobalFlights : matchFlights)(event.data.tracks, event.data.flights, event.data.config, progress);
+            if (event.data.analysis)
+                validateSpectralSupport(result, event.data.analysis);
             scope.postMessage({ type: 'result', data: result });
         }
     }

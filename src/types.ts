@@ -18,7 +18,7 @@ export interface DecodedAudio {
   samples: Float32Array; sampleRate: number; duration: number;
   channels: number; method: string; warnings: string[];
 }
-export interface FlightPoint { t: number; lat: number; lon: number; altM: number }
+export interface FlightPoint { t: number; lat: number; lon: number; altM: number; segment?: number; altitudeReference?: 'msl' | 'pressure' | 'qnh-msl' }
 export interface Flight { id: string; callsign: string; type?: string; points: FlightPoint[] }
 export interface SearchConfig {
   lat: number; lon: number; radiusKm: number; startTime: number; global?: boolean;
@@ -27,15 +27,21 @@ export interface SearchConfig {
 export interface Match {
   trackId: string; flightId: string; callsign: string; sourceHz: number;
   relativeRmse: number; coverage: number; improvement: number;
+  spectralSupport?: {contrastDb: number; coverage: number; samples: number; controlContrastDb?: number; excessDb?: number; controls?: number; status?: 'supported' | 'weak' | 'insufficient'};
   predicted: {t: number; hz: number}[];
 }
 export interface Candidate {
   lat: number; lon: number; offset: number; misfit: number;
   improvement: number; matches: Match[]; matchedFlights: number;
-  gridSpacingM: number; accepted: boolean;
+  gridSpacingM: number; accepted: boolean; curveAccepted?: boolean; audioEvidence?: 'supported' | 'weak' | 'insufficient';
 }
-export interface GridCell {lat: number; lon: number; misfit: number}
+export interface GridCell {lat: number; lon: number; misfit: number; spacingM?: number}
+export interface AudioValidation {
+  method: 'off-curve-contrast/1'; minContrastDb: number; minExcessDb: number;
+  minSamples: number; minCoverage: number; shiftsBins: readonly number[]; calibrated: false;
+}
 export interface FitResult {
+  audioValidation?: AudioValidation;
   candidates: Candidate[]; grid: GridCell[]; cellM: number;
   tested: number; elapsedMs: number; warnings: string[];
   search?: {mode: 'global'; flightsScanned: number; regionsRefined: number; maxDistanceKm: number; exhaustive: false};

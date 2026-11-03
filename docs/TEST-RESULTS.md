@@ -147,3 +147,19 @@ Brugerfladen siger nu “Lyd registreret · ingen brugbare Dopplerkurver” og f
 - En tavs WAV med det danske filnavn `prøve fil.wav` viste engelske analysebeskeder og bevarede filnavnet uændret. Brugerens filnavne, kaldesignaler og vilkårlige datakilder oversættes ikke.
 - Ved 390 CSS-pixels var begge sprogknapper synlige, og dokumentets bredde var 390 pixels uden horisontal overflow. Browserens normale bredde blev gendannet efter kontrollen.
 - `npm run check`: TypeScript, build og **51 tests bestået**. Nye tests dækker bevarelse af URL/rute, dynamiske beskeder, indlejrede statusbeskeder, tomme resultater, nummerformat og oversættelsesparametre.
+
+## Doppler-visning og spektral kontrast · 3. november 2026
+
+`npm run check` består: TypeScript, statisk build og 54 tests. Tre nye tests kontrollerer forskellen mellem en kendt faldende tone og en forskudt modelkurve, neutral baggrund og manglende dækning samt at diagnosen bevarer kandidaternes rangering og accept.
+
+Den lokale app er kontrolleret i browseren med den medfølgende syntetiske video: to modelkurver, spektral kontrast 56,5 og 53,8 dB, 100% måledækning, heatmap med farveskala samt dansk/engelsk sprogskift. Det er en kode- og visningskontrol, ikke en validering på virkelige webcamdata. Skærmbillede: `test-output/doppler-evidence.png` (lokal QA, ikke distribueret).
+
+
+## Originale flydata og ekstra lydkontrol · 3. november 2026
+
+- `npm run check`: TypeScript, build og 64 tests består. Nye tests dækker QNH på separate tidsakser, referencemiks, segmentbrud, relative readsb-tider, stale/ground/leg/geometric-flags, native genimport, flerfilsimport og dublet-ID’er.
+- Lydkontrollerne består en plantet faldende tone og den samlede syntetiske demo. En lige så stærk nabotone markeres som svag støtte. Et matematisk godt kurvematch i flad baggrund afvises; utilstrækkelig kontroldækning kan ikke tælle som bestået.
+- Ét live `POST /query` til adsb.aero, `limit: 2`, uden geografisk filter, for 2. november 2026 omkring 11:00 UTC: 2 flybaner, 279 punkter, 104 QNH-rettede positioner. Svaret havde cursor og er udtrykkeligt ufuldstændigt. Svaret og forespørgselsmetadata ligger lokalt i den ignorerede `test-output/`-mappe; de distribueres ikke som demo eller benchmark.
+- Det originale live API-svar er også importeret i den lokale browser: 2 flybaner, korrekt kilde og ODbL-licens. Der blev ikke kørt lokalisering på den syntetiske lyd med disse flydata, da tid og kilder ikke hører sammen.
+- Browserkontrol af den syntetiske demo på dansk og engelsk: begge spor består kontrollen, henholdsvis 53,2 og 50,2 dB over den stærkeste forskudte kontrol. Skærmbillede: `test-output/audio-controls.png`.
+- Dette er fortsat ikke validering af lokaliseringspræcision. Ingen tilsvarende rigtig lydoptagelse med kendt mikrofonplacering er tilgængelig.

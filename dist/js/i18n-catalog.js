@@ -1,5 +1,42 @@
 /** Danish source text → English. {0}, {1}, … capture dynamic plain-text values. */
 export const english = Object.fromEntries(`
+Kurvetilpasning | Curve fit
+Lavere fejl ← → Højere fejl | Lower error ← → Higher error
+Relativ skala · ikke sandsynlighed | Relative scale · not probability
+Cyan kurve = model | Cyan curve = model
+Spektral kontrast | Spectral contrast
+{0}% dækning | {0}% coverage
+Passer kurven til lyden? | Does the curve fit the audio?
+Den cyan kurve er flybanens forudsagte Dopplerforløb. Spektral kontrast måler lysstyrken langs kurven i forhold til frekvenserne ved siden af. Positiv kontrast betyder mere lydenergi langs modellen; det beviser ikke, at tonen kommer fra flyet. | The cyan curve is the flight track’s predicted Doppler curve. Spectral contrast measures brightness along the curve relative to neighbouring frequencies. Positive contrast means more audio energy along the model; it does not prove the tone comes from the aircraft.
+Lydkontrol bestået | Audio check passed
+Svag lydstøtte | Weak audio support
+Utilstrækkelig kontroldækning | Insufficient control coverage
+{0} dB over kontrol | {0} dB above control
+Importér også originale readsb-traces eller gemte API-svar. Flere filer kan vælges sammen. | You can also import original readsb traces or saved API responses. Multiple files can be selected together.
+Den cyan kurve er flybanens forudsagte Dopplerforløb. Spektral kontrast måler lysstyrken langs kurven i forhold til frekvenserne ved siden af. Lydkontrollen sammenligner med seks forskudte kurver ved de samme tidspunkter. Et kurvematch skal også bestå lydkontrollen for at blive accepteret. Det beviser stadig ikke, at tonen kommer fra flyet. | The cyan curve is the flight track’s predicted Doppler curve. Spectral contrast measures brightness along the curve relative to neighbouring frequencies. The audio check compares six shifted curves at the same times. A curve fit must also pass the audio check to be accepted. This still does not prove the tone comes from the aircraft.
+Ugyldigt flybanesegment. | Invalid flight path segment.
+Ukendt højdereference. | Unknown altitude reference.
+Tilgængelige QNH-rettelser er anvendt ved deres egne tidspunkter. Rettet MSL-højde er stadig ikke en præcis geometrisk højde. | Available QNH corrections have been applied at their own timestamps. Corrected MSL altitude is still not a precise geometric altitude.
+Nogle positioner mangler QNH-rettelse. Der interpoleres ikke mellem forskellige højdereferencer. | Some positions lack QNH corrections. Different altitude references are not interpolated together.
+Ugyldigt readsb-spor eller for mange datapunkter. | Invalid readsb trace or too many data points.
+readsb-punkter skal have gyldige flag og stigende tid. | readsb points must have valid flags and increasing timestamps.
+readsb-sporet indeholder ingen brugbar flybane. | The readsb trace contains no usable flight path.
+Lokal readsb-trace · kilde og licens skal kontrolleres | Local readsb trace · check source and licence
+readsb-højder er trykhøjder i fod omregnet til meter. Geometriske højder erstatter ikke automatisk MSL-højder. | readsb altitudes are pressure altitudes converted from feet to metres. Geometric altitudes do not automatically replace MSL altitudes.
+readsb-positioner kan stamme fra ADS-B, MLAT eller TIS-B. Modtagerkvalitet er ikke uafhængigt valideret. | readsb positions may originate from ADS-B, MLAT or TIS-B. Receiver quality has not been independently validated.
+{0} readsb-punkter blev udeladt; spor forbindes ikke hen over dem. | {0} readsb points were omitted; traces are not connected across them.
+Højst 20.000 flybaner pr. import. | At most 20,000 flight tracks per import.
+Ingen brugbare positioner i det importerede API-svar. | No usable positions in the imported API response.
+Det importerede API-svar har flere sider. Importen er ikke komplet. | The imported API response has more pages. The import is incomplete.
+Vælg højst 100 flydatafiler og samlet højst 25 MB. | Select at most 100 flight data files totalling no more than 25 MB.
+Flere lokale flydatafiler | Multiple local flight data files
+Et eller flere kurvematches blev afvist af lydkontrollen: modellen skal have mindst 3 dB kontrast og 3 dB mere end alle seks forskudte kontrolkurver, mindst 12 målinger og 70% dækning. Grænserne er ikke statistisk kalibreret. | One or more curve fits failed the audio check: the model needs at least 3 dB contrast and 3 dB more than all six shifted control curves, at least 12 measurements and 70% coverage. The thresholds are not statistically calibrated.
+Ingen kurvekandidater bestod den ekstra lydkontrol. Der gives ingen konklusion om placeringen. | No curve candidates passed the additional audio check. No conclusion about the location is provided.
+Afvist af lydkontrollen | Rejected by the audio check
+Ekstra kontrol mod lyden | Additional audio check
+Efter kurvetilpasningen sammenlignes modellens lydenergi med seks forskudte kontrolkurver ved de samme tidspunkter. Hvert spor skal have mindst 3 dB kontrast, mindst 3 dB mere end den stærkeste kontrol, 12 målinger og 70% dækning. Ellers accepteres kandidaten ikke. Det er en ukalibreret heuristik, og andre lydkilder kan stadig bestå. | After curve fitting, audio energy along the model is compared with six shifted control curves at identical times. Every track needs at least 3 dB contrast, at least 3 dB above the strongest control, 12 measurements and 70% coverage. Otherwise the candidate is not accepted. This is an uncalibrated heuristic, and other sound sources can still pass.
+Tilgængelige QNH-rettelser anvendes ved deres egne tidspunkter. Manglende rettelser mærkes som trykhøjde. Forskellige højdereferencer og separate dækningssegmenter forbindes ikke ved interpolation. | Available QNH corrections are applied at their own timestamps. Missing corrections are marked as pressure altitude. Different altitude references and separate coverage segments are not interpolated together.
+Originale readsb-traces og gemte API-svar kan importeres direkte. Vælg flere filer sammen for at samle flybaner fra et lokalt arkiv. En hel tar- eller ZIP-fil skal udpakkes først. | Original readsb traces and saved API responses can be imported directly. Select multiple files together to combine flight tracks from a local archive. A complete tar or ZIP file must be extracted first.
 Dansk | Danish
 Sprog | Language
 Skift til dansk | Switch to Danish

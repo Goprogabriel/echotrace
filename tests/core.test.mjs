@@ -118,3 +118,16 @@ test('Adaptive analysis preserves an already detected demo without extra FFT att
   const a=analyzeSignalAdaptive(wav(),8000);
   assert.equal(a.tracks.length,2);assert.deepEqual(a.resolutionAttempts,[8192]);
 });
+
+
+test('The complete synthetic location also passes off-curve audio controls',async()=>{
+  const {validateSpectralSupport}=await import('../dist/js/core/spectral-support.js');
+  analysis??=analyzeSignal(wav(),8000);
+  const result=matchFlights(analysis.tracks,dataset.flights,config);
+  validateSpectralSupport(result,analysis);
+  assert.equal(result.candidates[0].accepted,true);
+  assert.equal(result.candidates[0].audioEvidence,'supported');
+  assert(result.candidates[0].matches.every(m=>m.spectralSupport.excessDb>3));
+  assert.equal(result.audioValidation.calibrated,false);
+  assert.equal(result.audioValidation.shiftsBins.length,6);
+});

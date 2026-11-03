@@ -4,7 +4,7 @@ import { labPage } from './pages/lab.js';
 import { docsPage } from './pages/docs.js';
 import { initialState, isBusy } from './state.js';
 import { captureMedia, decodeMedia, validateMedia } from './core/audio.js';
-import { fetchFlights, importFlights, parseDataset } from './core/data.js';
+import { fetchFlights, importFlightFiles, parseDataset } from './core/data.js';
 import { startReveals } from './components/ui.js';
 import { drawIllustrationSpectrum, drawSpectrogram, drawWaveform, startHeroCanvas, spectrumBounds } from './components/visuals.js';
 import { manualRidge } from './core/signal.js';
@@ -321,7 +321,7 @@ async function runMatching() {
                 root.querySelector('#results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         };
-        worker.postMessage({ type: 'match', tracks, flights: state.dataset.flights, config });
+        worker.postMessage({ type: 'match', tracks, flights: state.dataset.flights, config, analysis: state.analysis });
     }
     catch (error) {
         fail(error, id);
@@ -343,7 +343,7 @@ async function loadDemo() {
 function exportReport() {
     if (!state.result || !state.config || !state.analysis)
         return;
-    const report = { schema: 'echotrace-report/2', language: getLanguage(), engineVersion: '0.1.0', exportedAt: new Date().toISOString(), synthetic: state.demo || state.dataset?.synthetic,
+    const report = { schema: 'echotrace-report/3', language: getLanguage(), engineVersion: '0.1.0', exportedAt: new Date().toISOString(), synthetic: state.demo || state.dataset?.synthetic,
         disclaimer: translateText('Eksperimentelle hypoteser, ikke bekræftede placeringer. Fejlmål er frekvensafvigelser, ikke sandsynligheder. Ingen kalibreret lokationspræcision. Brug ikke rapporten til at identificere en person.'),
         file: { name: state.file?.name, size: state.file?.size, type: state.file?.type }, decoding: state.decoded ? { ...state.decoded, method: translateText(state.decoded.method), warnings: state.decoded.warnings.map(translateText) } : null, search: { mode: 'global', startTime: state.config.startTime, clockUncertainty: state.config.clockUncertainty, receiverAltitudeM: state.config.receiverAltitudeM, soundSpeed: state.config.soundSpeed },
         signal: { duration: state.analysis.duration, sampleRate: state.analysis.sampleRate, fftSize: state.analysis.fftSize, hopSize: state.analysis.hopSize, resolutionAttempts: state.analysis.resolutionAttempts, minHz: state.analysis.minHz, maxHz: state.analysis.maxHz, tracks: state.analysis.tracks, selectedTracks: state.selectedTracks, warnings: state.analysis.warnings.map(translateText) },
@@ -535,16 +535,22 @@ root.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ')
 fileInput.onchange = () => { if (fileInput.files?.[0])
     void analyzeFile(fileInput.files[0]); };
 dataInput.onchange = async () => {
-    const file = dataInput.files?.[0];
-    if (!file)
+    const files = Array.from(dataInput.files || []);
+    if (!files.length)
         return;
+    const importJob = job;
     try {
-        state.dataset = await importFlights(file);
-        state.error = '';
+        const dataset = await importFlightFiles(files);
+        if (importJob !== job)
+            return;
+        state.dataset = dataset;
+        invalidateResult();
         render();
         toast(`${state.dataset.flights.length} flybaner indlæst lokalt.`);
     }
     catch (error) {
+        if (importJob !== job)
+            return;
         state.error = error instanceof Error ? error.message : 'Data kunne ikke indlæses.';
         render();
     }

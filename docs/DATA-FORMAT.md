@@ -4,7 +4,7 @@
 
 Der er to indgange: den dokumenterede offentlige adsb.aero-API og egne lokale udsnit. De medfølgende fly er **udelukkende syntetiske**. Appen søger ikke automatisk gennem hele adsb.lols globale dagsarkiver.
 
-API-adapteren spørger først `/data-range`. Derefter foretager den én afgrænset `POST /query` med `trajectory_intersects`, `include_path: true` og `limit: 100`. Den kontrollerer den faktisk returnerede arkivperiode og advarer ved afkortede svar. Ingen automatisk polling eller ubegrænset pagination. Tjenestens aktuelle drift og live CORS skal verificeres på din host.
+API-adapteren spørger først `/data-range`. Derefter foretager den `POST /query` med `trajectory_intersects`, `include_path: true` og `limit: 100`. Global hentning følger cursor med grænserne beskrevet nedenfor. Den kontrollerer den faktisk returnerede arkivperiode og advarer ved afkortede svar. Ingen automatisk polling eller ubegrænset pagination. Tjenestens aktuelle drift og live CORS skal verificeres på din host.
 
 Tidsvinduet udvides bagud til lydenes udsendelsestid; det er forkert kun at hente flypositioner fra det tidspunkt, hvor lyden blev hørt. Flydata hentes uden geografisk filter. Tidspunkter for udsendelse med op til 120 km lydafstand medtages.
 
@@ -62,7 +62,7 @@ EXAMPLE-001,SYNTHETIC,2026-08-18T10:59:02Z,55.70,12.5036,2200
 
 Højst 25 MB importfil, 50 MB udpakket gzip, 20.000 flybaner og 250.000 punkter samlet. JSON/CSV kan pakkes som `.json.gz`/`.csv.gz`, hvis browseren understøtter DecompressionStream.
 
-Dette er **ikke** en parser til vilkårlige readsb-arkiver eller rå `.tar`-filer. Et originalt arkiv skal først skæres til og konverteres til kontrakten ovenfor. En ZIP- eller tar-fil kan ikke blot vælges i importfeltet.
+Originale readsb-tracefiler (`icao`, `timestamp`, `trace`) understøttes nu direkte som JSON eller gzip. Vælg op til 100 filer sammen; de deler grænsen på 25 MB og 250.000 punkter. Rå ZIP- og tar-arkiver skal stadig udpakkes først. Hver original trace indeholder ét fly med relative tidspunkter, og kan rumme flere flight legs. Dublerede flybane-ID’er afvises frem for at tælle den samme flyvning to gange.
 
 ## adsb.aero-formatet
 
@@ -70,8 +70,17 @@ Adapteren følger dokumentationens `path.type = MultiLineString`. `path.coordina
 
 De sparsomme `path_gs`/andre hastighedsserier har egne tidspunkter og må ikke zippes direkte sammen med positionerne. Matcheren udleder bevægelsen fra positionspunkterne.
 
-Trykhøjde er **ikke** præcis geometrisk højde. Denne forskel korrigeres ikke meteorologisk i version 0.1.0 og vises som et forbehold. API-kilden er angivet som adsb.aero/adsb.lol med ODbL 1.0. Kontrollér gældende kildevilkår før videre distribution.
+Trykhøjde er **ikke** præcis geometrisk højde. Tilgængelige `alt_correction_ft`-værdier lægges nu til trykhøjden ved hjælp af deres egne tidspunkter og forward-fill inden for hvert segment. Manglende rettelser giver trykhøjde som fallback. Der hentes ikke yderligere meteorologiske data. API-kilden er angivet som adsb.aero/adsb.lol med ODbL 1.0. Kontrollér gældende kildevilkår før videre distribution.
 
 ## Global API-hentning
 
 `trajectory_intersects` indeholder kun `time_from` og `time_to`, ingen `geometry`. Der hentes sider via samme forespørgsel og `cursor`, med `start_from` to døgn før tidsvinduet. En enkelt side bruger limit 100. Højst 200 sider, 20.000 unikke fly eller 1.000.000 tidsrelevante punkter beholdes. `retrieval` gemmer faktiske sider, rå flyantal, udeladte ruter, tidsgrænser og om API-hentningen blev fuldført. Lokal import har ingen garanti for global dækning.
+
+
+## Import af originale data og kvalitetsmærkning
+
+Importer gemte adsb.aero-forespørgselssvar eller et enkelt API-fly direkte. Har svaret en cursor, vises en advarsel om manglende sider; importen henter ikke automatisk mere fra nettet. Kilde og licens bevares for API-data. Generiske readsb-filer får ukendt licens, da formatet alene ikke dokumenterer datakilden.
+
+Punkter kan indeholde `segment` (ikke-negativt heltal) og `altitudeReference` (`msl`, `pressure`, `qnh-msl`). De bevares ved genimport. Segment- og referenceskift afbryder fysisk interpolation. Native filer uden disse felter følger den eksisterende MSL-kontrakt.
+
+readsb-import følger [det originale traceformat](https://github.com/wiedehopf/readsb/blob/dev/README-json.md#trace-jsons). Flag 1 (stale), ground-rækker og flag 8 (geometrisk højde) udelades; flag 2 starter en ny flybane. Hvert udeladt punkt afbryder forbindelsen mellem omgivende punkter. Kildens sparsomme positionskvalitetsmetadata bruges endnu ikke som måleusikkerhed. Den resterende trykhøjde omregnes med 0,3048 m/fod.

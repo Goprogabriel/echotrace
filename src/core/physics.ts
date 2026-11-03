@@ -18,6 +18,8 @@ export function interpolate(f: PreparedFlight, t: number): {position: Vec3; velo
   if (n < 2 || t < ts[0] || t > ts[n - 1]) return null;
   let lo = 0, hi = n - 1;
   while (hi - lo > 1) { const mid = (hi + lo) >> 1; if (ts[mid] <= t) lo = mid; else hi = mid; }
+  const before = f.flight.points[lo], after = f.flight.points[hi];
+  if (before.segment !== after.segment || before.altitudeReference !== after.altitudeReference) return null;
   const dt = ts[hi] - ts[lo];
   // Never interpolate through a long coverage gap, duplicate timestamp, or across two flight legs.
   if (dt <= 0 || dt > 30) return null;

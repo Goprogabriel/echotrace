@@ -71,7 +71,7 @@ export function matchFlights(tracks: Ridge[], flights: Flight[], config: SearchC
       if (x*x + y*y > 64) continue;
       const p = offsetPosition(config.lat, config.lon, x * step, y * step);
       const candidate = evaluate(p.lat, p.lon, offsets, step);
-      if (candidate) { coarse.push(candidate); grid.push({lat: p.lat, lon: p.lon, misfit: candidate.misfit}); }
+      if (candidate) { coarse.push(candidate); grid.push({lat: p.lat, lon: p.lon, misfit: candidate.misfit, spacingM: step}); }
     }
     progress({phase: 'matching', text: `Sammenligner lyd med ${flights.length} flybaner · ${tested.toLocaleString('da-DK')} hypoteser`, progress: .04 + .59 * (y + 8) / 16});
   }

@@ -18,3 +18,8 @@ Dokumentation undersøgt 3. november 2026. Det er dokumentationshenvisninger, ik
 Kildekode, FFT, signalsporing, fysikmodel, UI, korttegning og demo er skrevet til dette projekt. Der er ikke hentet kode fra den oprindelige videos ophavsmand. Browserens medieafkoder og operativsystemets installerede skrifttyper anvendes uden at distribuere dem.
 
 - colsto — original demonstration, transcript and description reviewed 3 November 2026: https://www.youtube.com/watch?v=UytYrhYLOKI
+
+- adsb.aero OpenAPI, `alt_correction_ft` og forward-fill pr. segment: https://adsb.aero/api/openapi.json
+- readsb trace-format, relative sekunder, højdeenheder og leg/stale/height-flags: https://github.com/wiedehopf/readsb/blob/dev/README-json.md#trace-jsons
+
+De seneste parserændringer er kontrolleret med et lille live API-svar. Ingen påstand om adgang til Paras Chopras originale data eller kode.

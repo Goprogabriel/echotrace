@@ -12,7 +12,7 @@ function unproject(x: number,y: number,z:number): [number,number] {
 }
 let mapTilesEnabled = true;
 export function mountMap(container: HTMLElement, options: MapOptions): ()=>void {
-  container.innerHTML=`<div class="map-tiles"></div><canvas class="geo-canvas" tabindex="0" aria-label="${options.onPick?'Vælg søgeområde på kortet. Klik for at sætte centrum.':'Kort med flybaner og kandidatområder.'} Brug piletaster til at flytte og plus/minus til at zoome. Ctrl eller Command og rul zoomer også."></canvas><div class="map-controls"><button type="button" data-map="plus" aria-label="Zoom ind">${icon('plus')}</button><button type="button" data-map="minus" aria-label="Zoom ud">${icon('minus')}</button><button type="button" data-map="fit" aria-label="${options.config.global?'Vis alle mulige områder':'Vis hele søgeområdet'}">${icon('target')}</button></div><div class="map-bottom"><label class="tile-toggle"><input type="checkbox" data-map="tiles" ${mapTilesEnabled?'checked':''}><span>Vis baggrundskort</span></label><span class="map-attribution">${mapTilesEnabled?'© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap-bidragsydere</a>':'Geografisk grid · træk for at flytte'}</span></div><div class="map-load-error" role="status" hidden>Kortfliser kunne ikke hentes. Du kan stadig bruge koordinater, markører og zoom.</div>`;
+  container.innerHTML=`<div class="map-tiles"></div><canvas class="geo-canvas" tabindex="0" aria-label="${options.onPick?'Vælg søgeområde på kortet. Klik for at sætte centrum.':'Kort med flybaner og kandidatområder.'} Brug piletaster til at flytte og plus/minus til at zoome. Ctrl eller Command og rul zoomer også."></canvas><div class="heatmap-legend"><strong>Kurvetilpasning</strong><div></div><span>Lavere fejl ← → Højere fejl</span><small>Relativ skala · ikke sandsynlighed</small></div><div class="map-controls"><button type="button" data-map="plus" aria-label="Zoom ind">${icon('plus')}</button><button type="button" data-map="minus" aria-label="Zoom ud">${icon('minus')}</button><button type="button" data-map="fit" aria-label="${options.config.global?'Vis alle mulige områder':'Vis hele søgeområdet'}">${icon('target')}</button></div><div class="map-bottom"><label class="tile-toggle"><input type="checkbox" data-map="tiles" ${mapTilesEnabled?'checked':''}><span>Vis baggrundskort</span></label><span class="map-attribution">${mapTilesEnabled?'© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap-bidragsydere</a>':'Geografisk grid · træk for at flytte'}</span></div><div class="map-load-error" role="status" hidden>Kortfliser kunne ikke hentes. Du kan stadig bruge koordinater, markører og zoom.</div>`;
   const canvas=container.querySelector('canvas')!, tiles=container.querySelector<HTMLElement>('.map-tiles')!;
   let centerLat=options.config.lat, centerLon=options.config.lon, zoom=10, enabled=mapTilesEnabled;
   let dragging: {x:number;y:number;center:[number,number]}|null=null;
@@ -38,9 +38,9 @@ export function mountMap(container: HTMLElement, options: MapOptions): ()=>void 
     const center=project(centerLat,centerLon,zoom);
     const xy=(lat:number,lon:number):[number,number]=>{const p=project(lat,lon,zoom),world=256*2**zoom;let dx=p[0]-center[0];dx-=Math.round(dx/world)*world;return[dx+w/2,p[1]-center[1]+h/2];};
     ctx.clearRect(0,0,w,h);
-    if(!enabled){ctx.fillStyle='#f1f5ed';ctx.fillRect(0,0,w,h);}
+    if(!enabled){ctx.fillStyle='#0c1423';ctx.fillRect(0,0,w,h);}
     // Screen-aligned grid with correctly projected geographic tick labels.
-    ctx.strokeStyle=enabled?'#344a3512':'#708a7025';ctx.lineWidth=.7;ctx.font='10px ui-monospace, monospace';ctx.fillStyle='#586d56';
+    ctx.strokeStyle=enabled?'#344a3512':'#708a7025';ctx.lineWidth=.7;ctx.font='10px ui-monospace, monospace';ctx.fillStyle='#a6b3cd';
     const gridStep=80;
     for(let x=((w/2-center[0])%gridStep+gridStep)%gridStep;x<w;x+=gridStep){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();const ll=unproject(center[0]+x-w/2,center[1],zoom);ctx.fillText(ll[1].toFixed(3)+'°',x+4,h-65);}
     for(let y=((h/2-center[1])%gridStep+gridStep)%gridStep;y<h;y+=gridStep){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();const ll=unproject(center[0],center[1]+y-h/2,zoom);ctx.fillText(ll[0].toFixed(3)+'°',8,y-5);}
@@ -50,16 +50,24 @@ export function mountMap(container: HTMLElement, options: MapOptions): ()=>void 
       ctx.strokeStyle='#216448';ctx.fillStyle='#ffffff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(...searchCenter,7,0,Math.PI*2);ctx.fill();ctx.stroke();
       ctx.beginPath();ctx.moveTo(searchCenter[0]-15,searchCenter[1]);ctx.lineTo(searchCenter[0]+15,searchCenter[1]);ctx.moveTo(searchCenter[0],searchCenter[1]-15);ctx.lineTo(searchCenter[0],searchCenter[1]+15);ctx.stroke();
     }
-    const sorted=options.grid.map(g=>g.misfit).sort((a,b)=>a-b),floor=sorted[0]||0,ceiling=sorted[Math.floor(sorted.length*.5)]||.05;
-    for(const cell of options.grid){const p=xy(cell.lat,cell.lon),v=1-clamp((cell.misfit-floor)/Math.max(.001,ceiling-floor),0,1);if(v<.2)continue;ctx.fillStyle=`rgba(39,103,77,${v*.22})`;ctx.beginPath();ctx.arc(...p,clamp(r/9,2,18),0,Math.PI*2);ctx.fill();}
+    const sorted=options.grid.map(g=>g.misfit).sort((a,b)=>a-b),floor=sorted[0]??0,ceiling=sorted[Math.floor(sorted.length*.9)]??.05;
+    for(const cell of options.grid){
+      const p=xy(cell.lat,cell.lon),v=1-clamp((cell.misfit-floor)/Math.max(.000001,ceiling-floor),0,1);
+      const stops=[[68,1,84],[59,82,139],[33,145,140],[94,201,98],[253,231,37]];
+      const f=v*3.999,i=Math.floor(f),t=f-i;
+      const color=stops[i].map((c,k)=>Math.round(c+(stops[i+1][k]-c)*t));
+      const mpp=40075016*Math.cos(cell.lat*Math.PI/180)/(256*2**zoom);
+      const size=Math.max(2,(cell.spacingM??6250)/mpp);
+      ctx.fillStyle=`rgba(${color.join(',')},.65)`;ctx.fillRect(p[0]-size/2,p[1]-size/2,size,size);
+    }
     const active=options.candidates[options.selected];const activeIds=new Set(active?.matches.map(m=>m.flightId)||[]);
     options.flights.forEach(f=>{
-      const hot=activeIds.has(f.id);ctx.strokeStyle=hot?'#246b8acc':'#627a8890';ctx.lineWidth=hot?1.7:.8;ctx.beginPath();
-      f.points.forEach((p,i)=>{const v=xy(p.lat,p.lon);if(!i||p.t-f.points[i-1].t>30)ctx.moveTo(...v);else ctx.lineTo(...v);});ctx.stroke();
-      if(hot){const p=f.points.reduce((a,b)=>Math.abs(b.t-options.config.startTime)<Math.abs(a.t-options.config.startTime)?b:a);const v=xy(p.lat,p.lon);ctx.fillStyle='#205777';ctx.beginPath();ctx.moveTo(v[0],v[1]-6);ctx.lineTo(v[0]+4,v[1]+5);ctx.lineTo(v[0],v[1]+2);ctx.lineTo(v[0]-4,v[1]+5);ctx.closePath();ctx.fill();ctx.font='11px ui-monospace, monospace';ctx.fillText(f.callsign,v[0]+10,v[1]-6);}
+      const hot=activeIds.has(f.id);ctx.strokeStyle=hot?'#65efff':'#a6b3cd90';ctx.lineWidth=hot?1.7:.8;ctx.beginPath();
+      f.points.forEach((p,i)=>{const v=xy(p.lat,p.lon);if(!i||p.t-f.points[i-1].t>30||p.segment!==f.points[i-1].segment)ctx.moveTo(...v);else ctx.lineTo(...v);});ctx.stroke();
+      if(hot){const p=f.points.reduce((a,b)=>Math.abs(b.t-options.config.startTime)<Math.abs(a.t-options.config.startTime)?b:a);const v=xy(p.lat,p.lon);ctx.fillStyle='#65efff';ctx.beginPath();ctx.moveTo(v[0],v[1]-6);ctx.lineTo(v[0]+4,v[1]+5);ctx.lineTo(v[0],v[1]+2);ctx.lineTo(v[0]-4,v[1]+5);ctx.closePath();ctx.fill();ctx.font='11px ui-monospace, monospace';ctx.fillText(f.callsign,v[0]+10,v[1]-6);}
     });
-    options.candidates.forEach((c,i)=>{const p=xy(c.lat,c.lon),selected=i===options.selected;ctx.strokeStyle=selected?'#216448':'#52694c';ctx.lineWidth=selected?2:1;
-      ctx.fillStyle=selected?'#27674d22':'#27674d11';ctx.beginPath();ctx.arc(...p,selected?28:18,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle=selected?'#216448':'#52694c';ctx.beginPath();ctx.arc(...p,4,0,Math.PI*2);ctx.fill();
+    options.candidates.forEach((c,i)=>{const p=xy(c.lat,c.lon),selected=i===options.selected;ctx.strokeStyle=selected?'#ffffff':'#d5dfed';ctx.lineWidth=selected?2:1;
+      ctx.fillStyle=selected?'#27674d22':'#27674d11';ctx.beginPath();ctx.arc(...p,selected?28:18,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle=selected?'#ffffff':'#d5dfed';ctx.beginPath();ctx.arc(...p,4,0,Math.PI*2);ctx.fill();
       ctx.font='bold 11px ui-monospace, monospace';ctx.fillText(String(i+1).padStart(2,'0'),p[0]+12,p[1]-10);
     });
     if(enabled){

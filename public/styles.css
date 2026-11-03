@@ -76,3 +76,11 @@ body{background-image:radial-gradient(ellipse at 90% 0,#26387924,transparent 45%
 .header-actions{display:flex;align-items:center;gap:12px;flex-shrink:0}.language-switch{display:flex;border:1px solid var(--line-strong);border-radius:7px;padding:2px;gap:2px}.language-switch button{background:transparent;border:0;border-radius:4px;padding:5px 7px;font-size:11px;line-height:1.5;color:var(--muted)}.language-switch button[aria-pressed="true"]{background:var(--lime);color:var(--bg);font-weight:650}.language-switch button:hover{color:var(--text);background:var(--line)}@media(max-width:650px){.header-actions{gap:7px}.header-actions>.btn{padding:9px}.header-actions>.btn span{display:none}.language-switch button{padding:4px 6px}.header-inner{gap:8px}}
 
 .language-switch button[aria-pressed="true"]:hover{background:var(--lime);color:var(--bg)}
+
+/* Measured Doppler evidence and relative fit field. */
+.heatmap-legend{position:absolute;left:16px;top:16px;z-index:3;padding:12px 14px;background:rgba(255,255,255,.94);border:1px solid #d8dfdc;border-radius:10px;pointer-events:none;max-width:230px;color:#253a36;font-size:11px;display:grid;gap:6px}
+.heatmap-legend div{height:8px;border-radius:4px;background:linear-gradient(90deg,#fde725,#5ec962,#21918c,#3b528b,#440154)}
+.heatmap-legend small{font-size:10px;color:#61746e}
+.fit-panel canvas{background:#080c1b}
+
+.lab-spectrum canvas,#result-spectrum,.spectrum-hero canvas,.geo-canvas,.search-map:has(input[data-map="tiles"]:not(:checked)) .geo-canvas,.result-map:has(input[data-map="tiles"]:not(:checked)) .geo-canvas{filter:none}

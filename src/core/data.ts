@@ -18,7 +18,16 @@ export function epochSeconds(value: unknown): number {
 function point(value: unknown): FlightPoint {
   const p = object(value), lat = finite(p.lat, 'lat'), lon = finite(p.lon, 'lon'), altM = finite(p.altM, 'altM');
   if (Math.abs(lat) > 90 || Math.abs(lon) > 180 || altM < -500 || altM > 22000) throw new Error('En flyposition eller flyhøjde ligger uden for de tilladte grænser.');
-  return {t: epochSeconds(p.t), lat, lon, altM};
+  const result: FlightPoint = {t: epochSeconds(p.t), lat, lon, altM};
+  if (p.segment !== undefined) {
+    if (!Number.isSafeInteger(p.segment) || Number(p.segment) < 0) throw new Error('Ugyldigt flybanesegment.');
+    result.segment = Number(p.segment);
+  }
+  if (p.altitudeReference !== undefined) {
+    if (!['msl', 'pressure', 'qnh-msl'].includes(String(p.altitudeReference))) throw new Error('Ukendt højdereference.');
+    result.altitudeReference = p.altitudeReference as FlightPoint['altitudeReference'];
+  }
+  return result;
 }
 function normalize(points: FlightPoint[]): FlightPoint[] {
   points.sort((a, b) => a.t - b.t);
@@ -46,7 +55,7 @@ export function parseDataset(input: unknown, source = 'Importeret lokalt datasæ
 export function parseProvider(input: unknown, from: number, to: number, paged = false): FlightDataset {
   const root = object(input);
   if (!Array.isArray(root.flights)) throw new Error('Flytjenesten returnerede et ukendt format. Prøv lokal import.');
-  const flights: Flight[] = []; let omitted = 0;
+  const flights: Flight[] = []; let omitted = 0, corrected = 0, pressure = 0;
   for (const value of root.flights) {
     const f = object(value);
     if (typeof f.flight_id !== 'string' || !f.flight_id.trim()) {omitted++; continue;}
@@ -57,13 +66,22 @@ export function parseProvider(input: unknown, from: number, to: number, paged = 
     path.coordinates.forEach((segment: unknown, i: number) => {
       const times = (f.timestamps as unknown[])[i];
       if (!Array.isArray(segment) || !Array.isArray(times) || segment.length !== times.length) return;
+      const rawCorrections = Array.isArray(f.alt_correction_ft) ? f.alt_correction_ft[i] : null;
+      const corrections = Array.isArray(rawCorrections) ? rawCorrections.filter((v: unknown): v is number[] => Array.isArray(v) && v.length >= 2 && typeof v[0] === 'number' && Number.isFinite(v[0]) && typeof v[1] === 'number' && Number.isFinite(v[1])).sort((a, b) => a[0] - b[0]) : [];
+      let correctionIndex = -1;
       segment.forEach((coordinate: unknown, j: number) => {
         if (!Array.isArray(coordinate) || coordinate.length < 3 || coordinate[2] === null) return;
         try {
           const t = epochSeconds(times[j]);
           if (t < from || t > to) return;
-          // Published trajectory altitude is PRESSURE altitude in feet, not metres/geometric altitude.
-          points.push(point({t, lon: coordinate[0], lat: coordinate[1], altM: finite(coordinate[2], 'pressure_alt_ft') * .3048}));
+          // Sparse QNH corrections have their own timestamps, never zip with positions.
+          while (correctionIndex + 1 < corrections.length && corrections[correctionIndex + 1][0] <= t) correctionIndex++;
+          while (correctionIndex >= 0 && corrections[correctionIndex][0] > t) correctionIndex--;
+          const correction = correctionIndex >= 0 ? corrections[correctionIndex][1] : null;
+          points.push(point({t, lon: coordinate[0], lat: coordinate[1], segment: i,
+            altM: (finite(coordinate[2], 'pressure_alt_ft') + (correction ?? 0)) * .3048,
+            altitudeReference: correction === null ? 'pressure' : 'qnh-msl'}));
+          if (correction === null) pressure++; else corrected++;
         } catch { /* Ground/malformed positions are excluded rather than silently coerced. */ }
       });
     });
@@ -72,6 +90,8 @@ export function parseProvider(input: unknown, from: number, to: number, paged = 
     else omitted++;
   }
   const warnings = ['Kildehøjder er trykhøjder omregnet fra fod til meter, ikke præcise geometriske højder. Det kan forskyde løsningen.'];
+  if (corrected) warnings.push('Tilgængelige QNH-rettelser er anvendt ved deres egne tidspunkter. Rettet MSL-højde er stadig ikke en præcis geometrisk højde.');
+  if (pressure && corrected) warnings.push('Nogle positioner mangler QNH-rettelse. Der interpoleres ikke mellem forskellige højdereferencer.');
   if (root.cursor && !paged) warnings.push('API-svaret er afkortet. Flere fly kan findes; indsnævr søgeområdet eller importér et komplet udsnit.');
   if (omitted) warnings.push(`${omitted} ruter uden tilstrækkelige punkter i tidsvinduet blev udeladt.`);
   return {flights: paged ? flights : flights.slice(0, 100), source: 'adsb.aero / adsb.lol', license: 'ODbL 1.0', synthetic: false,
@@ -190,5 +210,66 @@ export async function importFlights(file: File): Promise<FlightDataset> {
     while (true) { const r = await reader.read(); if (r.done) break; size += r.value.length; if (size > 50 * 1024 * 1024) { await reader.cancel(); throw new Error('Udpakket datasæt er for stort (maks. 50 MB).'); } parts.push(r.value); }
     text = new TextDecoder().decode(await new Blob(parts as BlobPart[]).arrayBuffer());
   } else text = await file.text();
-  return file.name.replace(/\.gz$/, '').endsWith('.csv') ? parseCsv(text) : parseDataset(JSON.parse(text));
+  return file.name.replace(/\.gz$/, '').endsWith('.csv') ? parseCsv(text) : parseFlightInput(JSON.parse(text));
+}
+
+/** Original readsb per-aircraft trace, as published in the adsb.lol archives. */
+export function parseReadsbTrace(input: unknown): FlightDataset {
+  const root = object(input), base = epochSeconds(root.timestamp);
+  if (typeof root.icao !== 'string' || !/^~?[0-9a-f]{6}$/i.test(root.icao) || !Array.isArray(root.trace) || !root.trace.length || root.trace.length > MAX_POINTS) throw new Error('Ugyldigt readsb-spor eller for mange datapunkter.');
+  const flights: Flight[] = []; let points: FlightPoint[] = [], segment = 0, omitted = 0, lastTime = -Infinity;
+  let callsign = root.icao;
+  const flush = (): void => {
+    if (points.length >= 2) flights.push({id: `${root.icao}:${points[0].t}`, callsign, type: typeof root.t === 'string' ? root.t.slice(0, 30) : undefined, points});
+    points = []; callsign = root.icao as string;
+  };
+  for (const entry of root.trace) {
+    if (!Array.isArray(entry) || entry.length < 7 || typeof entry[0] !== 'number' || !Number.isFinite(entry[0]) || entry[0] < 0) {omitted++; segment++; continue;}
+    const t = base + entry[0], flags = entry[6];
+    if (!Number.isSafeInteger(flags) || flags < 0 || t <= lastTime) throw new Error('readsb-punkter skal have gyldige flag og stigende tid.');
+    lastTime = t;
+    if (flags & 2) {flush(); segment++;}
+    // Stale positions and ground rows cannot define a physical flight segment.
+    // Flag 8 denotes ellipsoid altitude: do not silently mix it with barometric MSL.
+    if (flags & 1 || flags & 8 || typeof entry[3] !== 'number') {omitted++; segment++; continue;}
+    try {
+      points.push(point({t, lat: entry[1], lon: entry[2], altM: entry[3] * .3048, segment, altitudeReference: 'pressure'}));
+      if (entry[8] && typeof entry[8] === 'object' && typeof entry[8].flight === 'string' && entry[8].flight.trim()) callsign = entry[8].flight.trim().slice(0, 32);
+    } catch {omitted++; segment++;}
+  }
+  flush();
+  if (flights.length > 20_000) throw new Error('Højst 20.000 flybaner pr. import.');
+  if (!flights.length) throw new Error('readsb-sporet indeholder ingen brugbar flybane.');
+  return {flights, source: 'Lokal readsb-trace · kilde og licens skal kontrolleres', license: 'Ikke angivet — kontrollér dine datarettigheder', synthetic: root.synthetic === true,
+    warnings: ['readsb-højder er trykhøjder i fod omregnet til meter. Geometriske højder erstatter ikke automatisk MSL-højder.',
+      'readsb-positioner kan stamme fra ADS-B, MLAT eller TIS-B. Modtagerkvalitet er ikke uafhængigt valideret.',
+      ...(omitted ? [`${omitted} readsb-punkter blev udeladt; spor forbindes ikke hen over dem.`] : [])]};
+}
+
+export function parseFlightInput(input: unknown): FlightDataset {
+  const root = object(input);
+  if (Array.isArray(root.trace)) return parseReadsbTrace(root);
+  const rawFlights = Array.isArray(root.flights) ? root.flights : typeof root.flight_id === 'string' ? [root] : null;
+  if (rawFlights?.length && rawFlights.every(f => f && typeof f === 'object' && 'flight_id' in f)) {
+    if (rawFlights.length > 20_000) throw new Error('Højst 20.000 flybaner pr. import.');
+    const result = parseProvider({flights: rawFlights, cursor: root.cursor}, 946684800, 4133980800, true);
+    if (!result.flights.length) throw new Error('Ingen brugbare positioner i det importerede API-svar.');
+    const validated = parseDataset({...result, synthetic: root.synthetic === true});
+    return {...validated, warnings: [...result.warnings, ...(root.cursor ? ['Det importerede API-svar har flere sider. Importen er ikke komplet.'] : [])]};
+  }
+  return parseDataset(root);
+}
+
+export async function importFlightFiles(files: File[]): Promise<FlightDataset> {
+  if (!files.length || files.length > 100 || files.reduce((sum, f) => sum + f.size, 0) > 25 * 1024 * 1024) throw new Error('Vælg højst 100 flydatafiler og samlet højst 25 MB.');
+  const datasets: FlightDataset[] = []; let total = 0;
+  for (const file of files) {
+    const dataset = await importFlights(file);
+    total += dataset.flights.reduce((sum, f) => sum + f.points.length, 0);
+    if (total > MAX_POINTS) throw new Error('Højst 250.000 datapunkter pr. import.');
+    datasets.push(dataset);
+  }
+  if (datasets.length === 1) return datasets[0];
+  const merged = parseDataset({flights: datasets.flatMap(d => d.flights), synthetic: datasets.some(d => d.synthetic), source: 'Flere lokale flydatafiler', license: [...new Set(datasets.map(d => d.license))].join('; ')});
+  return {...merged, warnings: [...new Set(datasets.flatMap(d => d.warnings))]};
 }

@@ -22,6 +22,9 @@ export function interpolate(f, t) {
         else
             hi = mid;
     }
+    const before = f.flight.points[lo], after = f.flight.points[hi];
+    if (before.segment !== after.segment || before.altitudeReference !== after.altitudeReference)
+        return null;
     const dt = ts[hi] - ts[lo];
     // Never interpolate through a long coverage gap, duplicate timestamp, or across two flight legs.
     if (dt <= 0 || dt > 30)

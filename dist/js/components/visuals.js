@@ -22,7 +22,7 @@ export function drawWaveform(canvas, values) {
     }
 }
 export function spectrumColor(value) {
-    const stops = [[248, 250, 245], [229, 239, 221], [190, 216, 181], [125, 174, 130], [58, 123, 88], [24, 76, 56]];
+    const stops = [[8, 12, 27], [30, 20, 64], [80, 32, 105], [164, 49, 121], [237, 112, 127], [255, 224, 153]];
     const v = clamp(value, 0, .999) * (stops.length - 1), i = Math.floor(v), t = v - i;
     return stops[i].map((c, k) => Math.round(c + (stops[i + 1][k] - c) * t));
 }
@@ -35,7 +35,7 @@ export function drawSpectrogram(canvas, analysis, candidate, view, selectedTrack
     const start = view?.start ?? 0, end = view?.end || analysis.duration;
     const minHz = view?.minHz ?? analysis.minHz, maxHz = view?.maxHz ?? analysis.maxHz;
     const timeSpan = Math.max(.1, end - start), band = Math.max(1, maxHz - minHz);
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = '#080c1b';
     ctx.fillRect(0, 0, w, h);
     // Estimate each frame's spectral floor so faint tones remain visible without changing PCM.
     const floors = new Float32Array(analysis.frames);
@@ -67,8 +67,8 @@ export function drawSpectrogram(canvas, analysis, candidate, view, selectedTrack
     temp.getContext('2d').putImageData(image, 0, 0);
     ctx.drawImage(temp, left, top, pw, ph);
     ctx.font = '10px ui-monospace, monospace';
-    ctx.fillStyle = '#52654f';
-    ctx.strokeStyle = '#243d2012';
+    ctx.fillStyle = '#a6b3cd';
+    ctx.strokeStyle = '#d8e5ff18';
     ctx.lineWidth = 1;
     const step = band <= 100 ? 20 : band <= 300 ? 50 : band <= 700 ? 100 : 200;
     for (let hz = Math.ceil(minHz / step) * step; hz < maxHz; hz += step) {
@@ -96,7 +96,7 @@ export function drawSpectrogram(canvas, analysis, candidate, view, selectedTrack
             ctx.lineTo(x, y); });
         ctx.stroke();
     };
-    const colors = ['#215a3b', '#175e8a', '#784795'];
+    const colors = ['#d6f79a', '#ffb777', '#edb5ff'];
     analysis.tracks.forEach((track, i) => {
         ctx.globalAlpha = selectedTracks && !selectedTracks.includes(track.id) ? .25 : 1;
         ctx.strokeStyle = colors[i % 3];
@@ -109,11 +109,12 @@ export function drawSpectrogram(canvas, analysis, candidate, view, selectedTrack
     ctx.globalAlpha = 1;
     if (candidate)
         candidate.matches.forEach(m => {
-            ctx.setLineDash([5, 4]);
-            ctx.strokeStyle = '#171f23';
-            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = '#001a24';
+            ctx.lineWidth = 4;
             line(m.predicted);
-            ctx.setLineDash([]);
+            ctx.strokeStyle = '#65efff';
+            ctx.lineWidth = 2;
+            line(m.predicted);
         });
     ctx.strokeStyle = '#ba5317';
     ctx.fillStyle = '#ba5317';

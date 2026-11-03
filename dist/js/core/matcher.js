@@ -89,7 +89,7 @@ export function matchFlights(tracks, flights, config, progress = () => { }) {
             const candidate = evaluate(p.lat, p.lon, offsets, step);
             if (candidate) {
                 coarse.push(candidate);
-                grid.push({ lat: p.lat, lon: p.lon, misfit: candidate.misfit });
+                grid.push({ lat: p.lat, lon: p.lon, misfit: candidate.misfit, spacingM: step });
             }
         }
         progress({ phase: 'matching', text: `Sammenligner lyd med ${flights.length} flybaner · ${tested.toLocaleString('da-DK')} hypoteser`, progress: .04 + .59 * (y + 8) / 16 });
