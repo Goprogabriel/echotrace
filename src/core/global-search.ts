@@ -2,12 +2,13 @@ import type {Candidate, FitResult, Flight, GridCell, ProgressFn, Ridge, SearchCo
 import {haversine, offsetPosition} from './math.js';
 import {ecef, prepareFlight} from './physics.js';
 import {fitTrack, matchFlights} from './matcher.js';
+import {sensitivityProfile} from './sensitivity.js';
 
 const MAX_REGIONS = 64;
 const MAX_FLIGHTS = 20_000;
 /** Flight-led worldwide candidate search. No user location or assumed home city. */
 export function matchGlobalFlights(tracks: Ridge[], flights: Flight[], config: SearchConfig, progress: ProgressFn = () => {}): FitResult {
-  const started = performance.now();
+  const started = performance.now(), profile = sensitivityProfile(config.sensitivity);
   if (!tracks.length || tracks.length > 3) throw new Error('Vælg mellem ét og tre frekvensspor.');
   if (!flights.length || flights.length > MAX_FLIGHTS) throw new Error('Global søgning kræver 1–20.000 flybaner.');
   if (![config.startTime, config.clockUncertainty, config.receiverAltitudeM, config.soundSpeed].every(Number.isFinite) || config.clockUncertainty < 0 || config.clockUncertainty > 60 || config.soundSpeed < 300 || config.soundSpeed > 370 || Math.abs(config.receiverAltitudeM) > 9000) throw new Error('Kontrollér tidspunkt og avancerede parametre.');
@@ -96,6 +97,6 @@ export function matchGlobalFlights(tracks: Ridge[], flights: Flight[], config: S
   if (unique.filter(c => c.accepted).length > 1) warnings.push('Flere adskilte områder passer til modellen. Resultatet er tvetydigt.');
   if (!unique.some(c => c.accepted)) warnings.unshift('Ingen kandidater bestod den eksperimentelle kvalitetsgrænse.');
   progress({phase: 'complete', text: 'Den globale kandidatsøgning er færdig', progress: 1});
-  return {candidates: unique, grid, cellM: 50_000, tested, elapsedMs: performance.now() - started, warnings,
+  return {sensitivityProfile: profile, candidates: unique, grid, cellM: 50_000, tested, elapsedMs: performance.now() - started, warnings,
     search: {mode: 'global', flightsScanned: eligible.length, regionsRefined: refinedRegions, maxDistanceKm: 120, exhaustive: false}};
 }

@@ -1,6 +1,8 @@
 import { dopplerFactor, ecef, prepareFlight } from './physics.js';
 import { haversine, offsetPosition } from './math.js';
+import { sensitivityProfile } from './sensitivity.js';
 export function fitTrack(track, flight, receiver, config, offset, keepCurve = false, samples = 56) {
+    const profile = sensitivityProfile(config.sensitivity);
     const stride = Math.max(1, Math.floor(track.points.length / samples));
     let xy = 0, xx = 0, sumw = 0, sumy = 0;
     const values = [];
@@ -18,7 +20,7 @@ export function fitTrack(track, flight, receiver, config, offset, keepCurve = fa
         sumy += w * p.hz;
         values.push({ t: p.t, hz: p.hz, factor, w });
     }
-    if (values.length < Math.min(25, Math.ceil(samples * .7)) || values.length / attempted < .85 || !xx)
+    if (values.length < Math.min(25, Math.ceil(samples * .7)) || values.length / attempted < profile.minFitCoverage || !xx)
         return null;
     const sourceHz = xy / xx, mean = sumy / sumw;
     let residual = 0, baseline = 0;
@@ -28,13 +30,13 @@ export function fitTrack(track, flight, receiver, config, offset, keepCurve = fa
     }
     const relativeRmse = Math.sqrt(residual / sumw) / mean;
     return { trackId: track.id, flightId: flight.flight.id, callsign: flight.flight.callsign,
-        sourceHz, relativeRmse, coverage: values.length / attempted,
+        sourceHz, relativeRmse, durationSeconds: track.end - track.start, coverage: values.length / attempted,
         improvement: baseline > 0 ? 1 - residual / baseline : 0,
         predicted: keepCurve ? values.map(p => ({ t: p.t, hz: sourceHz * p.factor })) : [] };
 }
 /** Bounded, coarse-to-fine grid search. Scores are model errors, NOT probabilities. */
 export function matchFlights(tracks, flights, config, progress = () => { }) {
-    const start = performance.now();
+    const start = performance.now(), profile = sensitivityProfile(config.sensitivity);
     if (!tracks.length)
         throw new Error('Der er ingen tonale spor at matche.');
     if (tracks.length > 3)
@@ -75,7 +77,7 @@ export function matchFlights(tracks, flights, config, progress = () => { }) {
             const improvement = Math.min(...matches.map(m => m.improvement));
             const candidate = { lat, lon, offset, misfit, improvement, matches,
                 matchedFlights: new Set(matches.map(m => m.flightId)).size, gridSpacingM: spacing,
-                accepted: misfit < .02 && improvement > .75 && matches.every(m => m.relativeRmse < .035) };
+                accepted: misfit < profile.maxRelativeRmse && improvement > profile.minImprovement && matches.every(m => m.relativeRmse < profile.maxTrackRmse && (m.durationSeconds ?? 0) >= profile.minDurationSeconds) };
             if (!best || misfit < best.misfit)
                 best = candidate;
         }
@@ -144,5 +146,5 @@ export function matchFlights(tracks, flights, config, progress = () => { }) {
     if (config.clockUncertainty > 0)
         warnings.push('Urkorrektionen er kun afsøgt på et diskret grid; den er ikke et uafhængigt fund af optagelsestiden.');
     progress({ phase: 'complete', text: 'Hypoteser og modelkurver er klar', progress: 1 });
-    return { candidates, grid, cellM: step, tested, elapsedMs: performance.now() - start, warnings };
+    return { sensitivityProfile: profile, candidates, grid, cellM: step, tested, elapsedMs: performance.now() - start, warnings };
 }

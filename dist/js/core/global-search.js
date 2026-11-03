@@ -1,11 +1,12 @@
 import { haversine, offsetPosition } from './math.js';
 import { ecef, prepareFlight } from './physics.js';
 import { fitTrack, matchFlights } from './matcher.js';
+import { sensitivityProfile } from './sensitivity.js';
 const MAX_REGIONS = 64;
 const MAX_FLIGHTS = 20_000;
 /** Flight-led worldwide candidate search. No user location or assumed home city. */
 export function matchGlobalFlights(tracks, flights, config, progress = () => { }) {
-    const started = performance.now();
+    const started = performance.now(), profile = sensitivityProfile(config.sensitivity);
     if (!tracks.length || tracks.length > 3)
         throw new Error('Vælg mellem ét og tre frekvensspor.');
     if (!flights.length || flights.length > MAX_FLIGHTS)
@@ -120,6 +121,6 @@ export function matchGlobalFlights(tracks, flights, config, progress = () => { }
     if (!unique.some(c => c.accepted))
         warnings.unshift('Ingen kandidater bestod den eksperimentelle kvalitetsgrænse.');
     progress({ phase: 'complete', text: 'Den globale kandidatsøgning er færdig', progress: 1 });
-    return { candidates: unique, grid, cellM: 50_000, tested, elapsedMs: performance.now() - started, warnings,
+    return { sensitivityProfile: profile, candidates: unique, grid, cellM: 50_000, tested, elapsedMs: performance.now() - started, warnings,
         search: { mode: 'global', flightsScanned: eligible.length, regionsRefined: refinedRegions, maxDistanceKm: 120, exhaustive: false } };
 }

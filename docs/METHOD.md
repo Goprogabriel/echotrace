@@ -51,7 +51,7 @@ Inden for hvert valgt område afsøges et 17×17 grid i en cirkel på 50 km. Hø
 
 Et spor bedømmes efter relativ frekvens-RMSE og forbedring i forhold til en konstant observeret tone. Højst tre udvalgte spor skal alle kunne forklares; man kan ikke få et godt resultat ved kun at vælge det ene bekvemme spor og ignorere resten.
 
-Den foreløbige acceptregel er samlet relativ RMSE under 2%, mindst 75% forbedring over konstant-tone-baseline, hvert spor under 3,5% fejl og tilstrækkeligt datamæssigt overlap. Grænserne er ikke statistisk kalibreret. Mange afprøvede hypoteser kan give tilfældige lave fejlmål.
+Ved standardfølsomhed 50 er den foreløbige acceptregel samlet relativ RMSE under 2%, mindst 75% forbedring over konstant-tone-baseline, hvert spor under 3,5% fejl og tilstrækkeligt datamæssigt overlap. Grænserne er ikke statistisk kalibreret. Mange afprøvede hypoteser kan give tilfældige lave fejlmål.
 
 Et enkelt fly giver ofte symmetriske eller aflange kandidatregioner. To eller flere geometrisk forskellige fly kan reducere tvetydigheden, men ukendt klokkeslæt, højde og kildetone kan stadig give falske matches. Kortets punkter og glødende gridceller er visning af beregninger — **ikke** posterior sandsynlighed eller et konfidensområde.
 
@@ -78,7 +78,7 @@ Denne opdatering forbedrer lydarbejdet og lokal kurvetilpasning. Automatisk terr
 
 Første indlæsning prøver 16.384 og derefter 32.768 FFT-punkter, hvis der findes færre end to spor, og klippet er langt nok til mindst 25 overlappende observationer. Et kraftigt spor stopper altså ikke genforsøget. En finere analyse erstatter et brugbart resultat, når den finder flere spor og samtidig bevarer de gamle passagers tid og frekvens: mindst 60% tidsmæssigt overlap og median relativ frekvensafvigelse under 2%. Når to spor er fundet, stoppes genforsøget; det er ikke en garanti for at finde alle mulige spor. Hvis ingen opløsning giver spor, vises den højeste afprøvede opløsning og en tydelig forklaring; der konstrueres ingen placering fra et tomt resultat. Den manuelle knap til genanalyse holder sig til brugerens præcise FFT-valg.
 
-For at begrænse tilfældige stier gennem lokale støjtoppe kræver et automatisk spor mindst 75% dækning inden for passagen og samlet frekvensvariation højst to gange nettosænkningen. Disse er stadig heuristiske filtre, ikke statistisk validerede sandsynligheder. Ikke-monotone rigtige passager kan blive afvist og skal undersøges manuelt. De afprøvede opløsninger gemmes i rapportens `resolutionAttempts`.
+For at begrænse tilfældige stier gennem lokale støjtoppe kræver et automatisk spor ved standardfølsomhed 50 mindst 75% dækning inden for passagen og samlet frekvensvariation højst to gange nettosænkningen. Disse er stadig heuristiske filtre, ikke statistisk validerede sandsynligheder. Ikke-monotone rigtige passager kan blive afvist og skal undersøges manuelt. De afprøvede opløsninger gemmes i rapportens `resolutionAttempts`.
 
 ### Hørbar flylyd er ikke i sig selv en lokaliseringsmåling
 
@@ -105,3 +105,30 @@ adsb.aeros `alt_correction_ft` anvendes som en separat tidsserie: seneste kendte
 Lokale readsb-traces kan importeres direkte, flere filer ad gangen. Relative sekunder lægges til filens UTC-basistid. Flag for nyt flight leg starter en ny flybane; stale-, ground- og geometrisk-højde-punkter udelades og afbryder forbindelsen mellem nabopunkter. Geometrisk højde er ellipsoidreference og erstatter ikke automatisk MSL. Der gættes ikke på manglende punkter, vind eller terræn. Enkeltstående API-fly og paginerede API-svar kan også importeres uden manuel formatkonvertering.
 
 Et afgrænset liveudsnit med 2 historiske flybaner, 279 positioner og 104 QNH-rettede positioner er indlæst til parserkontrol. Det er ikke et lyd-/lokaliseringsbenchmark. Original lyd med kendt tid og sted mangler stadig.
+
+
+## 11. Samlet følsomhed
+
+Følsomhed 0–100 er en deterministisk driftsindstilling, ikke en statistisk sikkerhedsprocent. Profilen `sensitivity/1` interpolerer mellem streng (0), standard (50) og følsom (100). Udeladt indstilling betyder 50, så eksisterende data og kodekald bevarer standardgrænserne.
+
+| Krav | 0 · streng | 50 · standard | 100 · følsom |
+|---|---:|---:|---:|
+| Minimum sporlængde | 14 s | 8 s | 6 s |
+| Maksimal samlet relativ frekvens-RMSE | 1% | 2% | 3,5% |
+| Maksimal fejl for ét spor | 2% | 3,5% | 5% |
+| Forbedring over konstant tone | 90% | 75% | 55% |
+| Lokal kontrast ved sporfinding | 14 dB | 10 dB | 6 dB |
+| Minimum tidsdækning i sporet | 90% | 75% | 55% |
+| Minimum spektral kontrast | 5 dB | 3 dB | 1,5 dB |
+| Minimum fordel over kontrolkurver | 5 dB | 3 dB | 1,5 dB |
+| Minimum lyd-/modeldækning | 85% | 70% | 60% |
+| Minimum andel med lydstøtte | 80% | 60% | 45% |
+| Minimum forskellige målevinduer | 20 | 12 | 10 |
+
+Profilen justerer også minimum frekvensfald, tilladt samlet variation og dækning af selve flytilpasningen. De fulde parametre gemmes i rapportens `result.sensitivityProfile`; lydkontrollen bruger metode-ID `off-curve-contrast/3`. Signal- og søgeparametre indeholder den anvendte værdi. Sporlængden er længden af den fundne passage, ikke et løfte om uafbrudt hørbar tone i hvert øjeblik. Fejlmålet er relativ frekvens-RMSE, ikke maksimal afvigelse i hvert enkelt målepunkt.
+
+En ændret værdi kræver “Anvend og analysér igen”. Gamle resultater fjernes, og søgning er blokeret, indtil lydanalysen er kørt med den nye værdi. Allerede valgte passager genfindes efter tid og frekvens, når det er muligt; nye svage forslag bliver ikke automatisk føjet til et eksisterende valg. Værdien følger næste fil i samme åbne app og nulstilles ved genindlæsning. Der bruges ingen lokal lagring.
+
+Over 50 undersøges de tilgængelige finere FFT-opløsninger, selv om første forsøg giver to spor. Den passering med højest samlet varighedsvægtet tonal kontrast vælges. Dette modvirker, at et kort, løst støjforslag i den grove analyse blokerer et bedre resultat ved finere opløsning. Det gør ikke forslagene til dokumenterede flylyde: høj følsomhed kan give mange støjkurver, og fly- og lydkontrollerne skal stadig bestås. Ugyldige positioner, tidsstempler, dækningsgab og lydfysikkens grænser lempes ikke.
+
+Ingen af profilerne er kalibreret på et repræsentativt virkeligt datasæt. Den høje indstilling er et udforskningsværktøj med større risiko for falske matches; den løser ikke generel lokalisering fra bredbåndet lyd uden målbare toner.

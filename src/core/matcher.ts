@@ -1,8 +1,10 @@
 import type {Candidate, FitResult, Flight, GridCell, Match, ProgressFn, Ridge, SearchConfig} from '../types.js';
 import {dopplerFactor, ecef, prepareFlight, type PreparedFlight, type Vec3} from './physics.js';
 import {haversine, offsetPosition} from './math.js';
+import {sensitivityProfile} from './sensitivity.js';
 
 export function fitTrack(track: Ridge, flight: PreparedFlight, receiver: Vec3, config: SearchConfig, offset: number, keepCurve = false, samples = 56): Match | null {
+  const profile = sensitivityProfile(config.sensitivity);
   const stride = Math.max(1, Math.floor(track.points.length / samples));
   let xy = 0, xx = 0, sumw = 0, sumy = 0;
   const values: {t: number; hz: number; factor: number; w: number}[] = [];
@@ -15,7 +17,7 @@ export function fitTrack(track: Ridge, flight: PreparedFlight, receiver: Vec3, c
     xy += w * factor * p.hz; xx += w * factor * factor;
     sumw += w; sumy += w * p.hz; values.push({t: p.t, hz: p.hz, factor, w});
   }
-  if (values.length < Math.min(25, Math.ceil(samples * .7)) || values.length / attempted < .85 || !xx) return null;
+  if (values.length < Math.min(25, Math.ceil(samples * .7)) || values.length / attempted < profile.minFitCoverage || !xx) return null;
   const sourceHz = xy / xx, mean = sumy / sumw;
   let residual = 0, baseline = 0;
   for (const p of values) {
@@ -24,14 +26,14 @@ export function fitTrack(track: Ridge, flight: PreparedFlight, receiver: Vec3, c
   }
   const relativeRmse = Math.sqrt(residual / sumw) / mean;
   return {trackId: track.id, flightId: flight.flight.id, callsign: flight.flight.callsign,
-    sourceHz, relativeRmse, coverage: values.length / attempted,
+    sourceHz, relativeRmse, durationSeconds: track.end - track.start, coverage: values.length / attempted,
     improvement: baseline > 0 ? 1 - residual / baseline : 0,
     predicted: keepCurve ? values.map(p => ({t: p.t, hz: sourceHz * p.factor})) : []};
 }
 
 /** Bounded, coarse-to-fine grid search. Scores are model errors, NOT probabilities. */
 export function matchFlights(tracks: Ridge[], flights: Flight[], config: SearchConfig, progress: ProgressFn = () => {}): FitResult {
-  const start = performance.now();
+  const start = performance.now(), profile = sensitivityProfile(config.sensitivity);
   if (!tracks.length) throw new Error('Der er ingen tonale spor at matche.');
   if (tracks.length > 3) throw new Error('Vælg højst tre spor til én søgning.');
   if (!flights.length) throw new Error('Datasættet indeholder ingen anvendelige flybaner.');
@@ -61,7 +63,7 @@ export function matchFlights(tracks: Ridge[], flights: Flight[], config: SearchC
       const improvement = Math.min(...matches.map(m => m.improvement));
       const candidate: Candidate = {lat, lon, offset, misfit, improvement, matches,
         matchedFlights: new Set(matches.map(m => m.flightId)).size, gridSpacingM: spacing,
-        accepted: misfit < .02 && improvement > .75 && matches.every(m => m.relativeRmse < .035)};
+        accepted: misfit < profile.maxRelativeRmse && improvement > profile.minImprovement && matches.every(m => m.relativeRmse < profile.maxTrackRmse && (m.durationSeconds ?? 0) >= profile.minDurationSeconds)};
       if (!best || misfit < best.misfit) best = candidate;
     }
     return best;
@@ -113,5 +115,5 @@ export function matchFlights(tracks: Ridge[], flights: Flight[], config: SearchC
   if (!candidates.some(c => c.accepted)) warnings.unshift('Ingen kandidater bestod den eksperimentelle kvalitetsgrænse.');
   if (config.clockUncertainty > 0) warnings.push('Urkorrektionen er kun afsøgt på et diskret grid; den er ikke et uafhængigt fund af optagelsestiden.');
   progress({phase: 'complete', text: 'Hypoteser og modelkurver er klar', progress: 1});
-  return {candidates, grid, cellM: step, tested, elapsedMs: performance.now() - start, warnings};
+  return {sensitivityProfile: profile, candidates, grid, cellM: step, tested, elapsedMs: performance.now() - start, warnings};
 }

@@ -4,10 +4,18 @@ export interface Ridge {
   medianSnr: number; start: number; end: number;
   source?: 'auto';
 }
-export interface SignalOptions { fftSize: number; minHz: number; maxHz: number }
+export interface SensitivityProfile {
+  version: 'sensitivity/1'; value: number; calibrated: false;
+  minDurationSeconds: number; minPointContrastDb: number; minTrackCoverage: number;
+  maxVariationRatio: number; minDriftHz: number; minRelativeDrift: number; minFitCoverage: number;
+  maxRelativeRmse: number; maxTrackRmse: number; minImprovement: number;
+  minContrastDb: number; minExcessDb: number; minTemporalExcessDb: number;
+  minSupportedFraction: number; minAudioCoverage: number; minSamples: number;
+}
+export interface SignalOptions { fftSize: number; minHz: number; maxHz: number; sensitivity?: number }
 export interface SpectrumView { start: number; end: number; minHz: number; maxHz: number; gain: number }
 export interface SignalAnalysis {
-  resolutionAttempts?: number[];
+  resolutionAttempts?: number[]; sensitivity?: number;
   duration: number; sampleRate: number; fftSize: number; hopSize: number;
   frames: number; bins: number; minHz: number; maxHz: number;
   db: Float32Array; waveform: Float32Array; tracks: Ridge[];
@@ -21,11 +29,11 @@ export interface FlightPoint { t: number; lat: number; lon: number; altM: number
 export interface Flight { id: string; callsign: string; type?: string; points: FlightPoint[] }
 export interface SearchConfig {
   lat: number; lon: number; radiusKm: number; startTime: number; global?: boolean;
-  clockUncertainty: number; receiverAltitudeM: number; soundSpeed: number;
+  clockUncertainty: number; receiverAltitudeM: number; soundSpeed: number; sensitivity?: number;
 }
 export interface Match {
   trackId: string; flightId: string; callsign: string; sourceHz: number;
-  relativeRmse: number; coverage: number; improvement: number;
+  relativeRmse: number; coverage: number; improvement: number; durationSeconds?: number;
   spectralSupport?: {contrastDb: number; coverage: number; samples: number; controlContrastDb?: number; excessDb?: number; reversedContrastDb?: number; temporalExcessDb?: number; supportedFraction?: number; modelCoverage?: number; controls?: number; status?: 'supported' | 'weak' | 'insufficient'};
   predicted: {t: number; hz: number}[];
 }
@@ -36,11 +44,11 @@ export interface Candidate {
 }
 export interface GridCell {lat: number; lon: number; misfit: number; spacingM?: number}
 export interface AudioValidation {
-  method: 'off-curve-contrast/2'; minTemporalExcessDb: number; minSupportedFraction: number; maxModelSamples: number; minContrastDb: number; minExcessDb: number;
+  method: 'off-curve-contrast/3'; sensitivity: number; minDurationSeconds: number; minTemporalExcessDb: number; minSupportedFraction: number; maxModelSamples: number; minContrastDb: number; minExcessDb: number;
   minSamples: number; minCoverage: number; shiftsBins: readonly number[]; calibrated: false;
 }
 export interface FitResult {
-  audioValidation?: AudioValidation;
+  audioValidation?: AudioValidation; sensitivityProfile?: Readonly<SensitivityProfile>;
   candidates: Candidate[]; grid: GridCell[]; cellM: number;
   tested: number; elapsedMs: number; warnings: string[];
   search?: {mode: 'global'; flightsScanned: number; regionsRefined: number; maxDistanceKm: number; exhaustive: false};

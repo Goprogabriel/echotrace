@@ -29,7 +29,7 @@ loader=r'''async ({sources,fixtures})=>{
     // Opaque about:blank cannot start module workers; flatten the unchanged engine modules
     // into one classic worker for this local-only test. Production ships the original ES modules.
     if(key==='js/workers/analysis.worker.js'){
-      source=['js/core/math.js','js/core/signal.js','js/core/physics.js','js/core/matcher.js','js/core/global-search.js','js/core/spectral-support.js',key].map(k=>sources[k].replace(/^import .*?;$/gm,'').replace(/\bexport /g,'')).join('\n');
+      source=['js/core/math.js','js/core/tracks.js','js/core/sensitivity.js','js/core/signal.js','js/core/physics.js','js/core/matcher.js','js/core/global-search.js','js/core/spectral-support.js',key].map(k=>sources[k].replace(/^import .*?;$/gm,'').replace(/\bexport /g,'')).join('\n');
     }
     if(key==='js/app.js')source=source.replace(/type:\s*['"]module['"]/g,"type: 'classic'");
     source=source.replace(/new URL\((['"])([^'"]+)\1,\s*import\.meta\.url\)/g,(_,q,rel)=>JSON.stringify(build(path(key,rel))));

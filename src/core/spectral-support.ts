@@ -1,13 +1,12 @@
 import type {AudioValidation, FitResult, Match, SignalAnalysis, Flight, Ridge, SearchConfig} from '../types.js';
 import {median} from './math.js';
 import {dopplerFactor, ecef, prepareFlight} from './physics.js';
-export const AUDIO_VALIDATION: Readonly<AudioValidation> = Object.freeze({method: 'off-curve-contrast/2', minTemporalExcessDb: 3, minSupportedFraction: .6, maxModelSamples: 512,
-  minContrastDb: 3, minExcessDb: 3, minSamples: 12, minCoverage: .7,
-  shiftsBins: Object.freeze([-32, -20, -12, 12, 20, 32]), calibrated: false});
+import {audioValidation, sensitivityProfile} from './sensitivity.js';
+export const AUDIO_VALIDATION: Readonly<AudioValidation> = Object.freeze(audioValidation());
 
 /** Independent display diagnostic: model brightness against nearby off-curve bins.
  * Does not rerank candidates or turn frequency error into a probability. */
-export function measureSpectralSupport(analysis: SignalAnalysis, predicted: Match['predicted']): Match['spectralSupport'] {
+export function measureSpectralSupport(analysis: SignalAnalysis, predicted: Match['predicted'], validation: Readonly<AudioValidation> = AUDIO_VALIDATION): Match['spectralSupport'] {
   const contrasts: number[] = [];
   const visitedFrames = new Set<number>();
   const binHz = analysis.sampleRate / analysis.fftSize;
@@ -24,7 +23,7 @@ export function measureSpectralSupport(analysis: SignalAnalysis, predicted: Matc
     if (Number.isFinite(on) && Number.isFinite(off)) contrasts.push(on - off);
   }
   if (!contrasts.length) return undefined;
-  return {contrastDb: median(contrasts), coverage: contrasts.length / Math.max(1, predicted.length), samples: contrasts.length, supportedFraction: contrasts.filter(c => c >= AUDIO_VALIDATION.minContrastDb).length / contrasts.length};
+  return {contrastDb: median(contrasts), coverage: contrasts.length / Math.max(1, predicted.length), samples: contrasts.length, supportedFraction: contrasts.filter(c => c >= validation.minContrastDb).length / contrasts.length};
 }
 export function attachSpectralSupport(result: FitResult, analysis: SignalAnalysis): void {
   for (const candidate of result.candidates) for (const match of candidate.matches)
@@ -33,27 +32,27 @@ export function attachSpectralSupport(result: FitResult, analysis: SignalAnalysi
 
 /** Fixed off-curve controls, evaluated at identical times and with equal coverage.
  * This is an uncalibrated rejection heuristic, not an independent validation set. */
-export function compareSpectralControls(analysis: SignalAnalysis, predicted: Match['predicted']): Match['spectralSupport'] {
+export function compareSpectralControls(analysis: SignalAnalysis, predicted: Match['predicted'], validation: Readonly<AudioValidation> = AUDIO_VALIDATION): Match['spectralSupport'] {
   const binHz = analysis.sampleRate / analysis.fftSize;
-  const shifts = AUDIO_VALIDATION.shiftsBins;
+  const shifts = validation.shiftsBins;
   const shared = predicted.filter(p => {
     const frame = Math.round((p.t * analysis.sampleRate - analysis.fftSize / 2) / analysis.hopSize);
     const bin = Math.round((p.hz - analysis.minHz) / binHz);
     return frame >= 0 && frame < analysis.frames && bin >= 40 && bin < analysis.bins - 40;
   });
-  const support = measureSpectralSupport(analysis, shared);
+  const support = measureSpectralSupport(analysis, shared, validation);
   if (!support) return undefined;
   support.coverage = shared.length / Math.max(1, predicted.length);
-  const controls = shifts.map(shift => measureSpectralSupport(analysis, shared.map(p => ({t: p.t, hz: p.hz + shift * binHz}))));
+  const controls = shifts.map(shift => measureSpectralSupport(analysis, shared.map(p => ({t: p.t, hz: p.hz + shift * binHz})), validation));
   if (controls.some(c => !c || c.samples !== support.samples)) return {...support, status: 'insufficient'};
   const reversed = shared.map((p, i) => ({t: p.t, hz: shared[shared.length - 1 - i].hz}));
-  const reverseSupport = measureSpectralSupport(analysis, reversed);
+  const reverseSupport = measureSpectralSupport(analysis, reversed, validation);
   if (!reverseSupport || reverseSupport.samples !== support.samples) return {...support, status: 'insufficient'};
   const temporalExcessDb = support.contrastDb - reverseSupport.contrastDb;
   const controlContrastDb = Math.max(...controls.map(c => c!.contrastDb));
   const excessDb = support.contrastDb - controlContrastDb;
   return {...support, controlContrastDb, excessDb, reversedContrastDb: reverseSupport.contrastDb, temporalExcessDb, controls: controls.length,
-    status: support.samples < AUDIO_VALIDATION.minSamples || support.coverage < AUDIO_VALIDATION.minCoverage ? 'insufficient' : support.contrastDb >= AUDIO_VALIDATION.minContrastDb && excessDb >= AUDIO_VALIDATION.minExcessDb && temporalExcessDb >= AUDIO_VALIDATION.minTemporalExcessDb && (support.supportedFraction ?? 0) >= AUDIO_VALIDATION.minSupportedFraction ? 'supported' : 'weak'};
+    status: support.samples < validation.minSamples || support.coverage < validation.minCoverage ? 'insufficient' : support.contrastDb >= validation.minContrastDb && excessDb >= validation.minExcessDb && temporalExcessDb >= validation.minTemporalExcessDb && (support.supportedFraction ?? 0) >= validation.minSupportedFraction ? 'supported' : 'weak'};
 }
 
 export interface AudioContext {flights: Flight[]; tracks: Ridge[]; config: SearchConfig}
@@ -77,7 +76,9 @@ export function sampleModelCurve(analysis: SignalAnalysis, track: Ridge, flight:
 
 /** A curve-only hypothesis must also survive audio checks before final acceptance. */
 export function validateSpectralSupport(result: FitResult, analysis: SignalAnalysis, context?: AudioContext): void {
-  result.audioValidation = {...AUDIO_VALIDATION};
+  const profile = sensitivityProfile(context?.config.sensitivity ?? analysis.sensitivity);
+  const validation = audioValidation(profile.value);
+  result.sensitivityProfile = profile; result.audioValidation = validation;
   let rejected = false;
   for (const candidate of result.candidates) {
     candidate.curveAccepted ??= candidate.accepted;
@@ -89,11 +90,11 @@ export function validateSpectralSupport(result: FitResult, analysis: SignalAnaly
         const model = sampleModelCurve(analysis, track, flight, context.config, candidate, match.sourceHz);
         match.predicted = model.predicted; modelCoverage = model.coverage;
       }
-      match.spectralSupport = compareSpectralControls(analysis, match.predicted);
+      match.spectralSupport = compareSpectralControls(analysis, match.predicted, validation);
       if (match.spectralSupport) {
         match.spectralSupport.modelCoverage = modelCoverage;
         match.spectralSupport.coverage *= modelCoverage;
-        if (match.spectralSupport.coverage < AUDIO_VALIDATION.minCoverage) match.spectralSupport.status = 'insufficient';
+        if (match.spectralSupport.coverage < validation.minCoverage) match.spectralSupport.status = 'insufficient';
       }
     }
     const supports = candidate.matches.map(m => m.spectralSupport?.status);
@@ -103,6 +104,6 @@ export function validateSpectralSupport(result: FitResult, analysis: SignalAnaly
   }
   // Show accepted audio-supported candidates first, then retain model-error ordering.
   result.candidates.sort((a, b) => Number(b.accepted) - Number(a.accepted) || a.misfit - b.misfit);
-  if (rejected) result.warnings.push('Et eller flere kurvematches blev afvist af lydkontrollen: modellen skal slå både seks forskudte kurver og kurven i omvendt tidsretning med mindst 3 dB. Der kræves mindst 12 forskellige frekvensvinduer, 70% dækning og lydstøtte i 60% af målingerne. Grænserne er ikke statistisk kalibreret.');
+  if (rejected) result.warnings.push('Et eller flere kurvematches blev afvist af lydkontrollen ved den valgte følsomhed. De anvendte grænser gemmes i rapporten og er ikke statistisk kalibreret.');
   if (!result.candidates.some(c => c.accepted) && result.candidates.some(c => c.curveAccepted)) result.warnings.unshift('Ingen kurvekandidater bestod den ekstra lydkontrol. Der gives ingen konklusion om placeringen.');
 }

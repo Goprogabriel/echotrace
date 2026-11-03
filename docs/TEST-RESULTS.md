@@ -184,3 +184,14 @@ Der mangler stadig uafhængige virkelige lydoptagelser med kendt UTC og modtager
 
 
 Browserkontrol af denne version: den syntetiske demo giver 493 målevinduer pr. spor med 100% lokal lydstøtte. Det særlige klip med kraftig og svag tone blev åbnet gennem browserens filvælger og gav to automatiske spor ved FFT 16.384. Danske og engelske hjælpetekster samt måleantal er kontrolleret.
+
+
+## Samlet følsomhed · 3. november 2026
+
+`npm run check` består med 75 tests. Profilen er testet for monotone grænser over alle værdier 0–100, uændrede standardgrænser ved 50 og afvisning af ugyldige værdier. En ideel 7-sekunders flykurve afvises af normalprofilens varighedskrav og accepteres af den følsomme kurveprofil. En svag 2 dB spektral testkurve afvises ved 50 og består lydkontrollens grænser ved 100; ensartet baggrund består ikke. Seks yderligere negative støj-/stationære tests består også ved høj følsomhed mod faste Dopplerkontrolkurver.
+
+Ændrede indstillinger markeres som afventende og kræver ny signalanalyse. Et valgt event genfindes ved tid/frekvens frem for at vælge en ny støjhypotese med samme rækkenummer. Disse tests dokumenterer ikke, at høj følsomhed er uden falske spor: den kan producere flere automatiske forslag, som stadig skal undersøges med flymodellen og lydkontrollen.
+
+Browserkontrol: den syntetiske demo er gennemført ved følsomhed 0, 50 og 100. Ved ændring bliver den gamle resultatvisning fjernet og søgeknappen deaktiveret, indtil ny analyse er gennemført. Dansk/engelsk skift bevarer indstillingen og viser de tilsvarende krav. Browserens eksporterede rapport er læst tilbage: signalanalyse, søgning, fuld følsomhedsprofil og lydvalidering bruger alle værdien 100 med 6 s minimumsvarighed og 3,5% samlet frekvens-RMSE. Rapportens bedste syntetiske kandidat består.
+
+Nye profiler er fortsat ukalibrerede driftsindstillinger. Ingen procent for korrekt sted eller dokumenteret real-world-præcision er tilføjet.

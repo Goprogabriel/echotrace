@@ -1,33 +1,30 @@
 import {clamp, fft, median} from './math.js';
+import {sensitivityProfile} from './sensitivity.js';
+import {samePassage} from './tracks.js';
 import type {ProgressFn, Ridge, RidgePoint, SignalAnalysis, SignalOptions} from '../types.js';
 
 export const DEFAULT_SIGNAL_OPTIONS: SignalOptions = {fftSize: 8192, minHz: 30, maxHz: 1000};
 
 /** Search finer resolutions for missing passages even after finding one strong tone.
- * Keep the original result unless a finer pass adds tracks without losing old ones.
+ * At normal/strict settings, retain existing passages when adding tracks.
+ * Sensitive settings compare all resolutions by duration-weighted tonal contrast.
  * User-triggered reanalysis still honours the selected resolution exactly. */
 export function analyzeSignalAdaptive(samples: Float32Array, sampleRate: number, progress: ProgressFn = () => {}, options: SignalOptions = DEFAULT_SIGNAL_OPTIONS): SignalAnalysis {
   let best = analyzeSignal(samples, sampleRate, progress, options);
   const attempts = [options.fftSize];
   best.resolutionAttempts = [...attempts];
-  if (best.tracks.length >= 2) return best;
+  if (best.tracks.length >= 2 && sensitivityProfile(options.sensitivity).value <= 50) return best;
   const initialCount = best.tracks.length;
+  const profile = sensitivityProfile(options.sensitivity), sensitive = profile.value > 50;
+  const quality = (analysis: SignalAnalysis): number => analysis.tracks.reduce((score, t) => score + (t.end - t.start) * Math.max(0, t.medianSnr - profile.minPointContrastDb + 1), 0);
   for (const fftSize of [16384, 32768].filter(size => size > options.fftSize)) {
     if (samples.length < fftSize * 4) continue;
     attempts.push(fftSize);
     const result = analyzeSignal(samples, sampleRate, p => progress({...p, text: `Ny søgning med FFT ${fftSize.toLocaleString('da-DK')} · ${p.text}`}), {...options, fftSize});
     // Retain a detected passage: a new resolution must explain the same time/frequency trace.
-    const retains = best.tracks.every(old => result.tracks.some(track => {
-      const overlap = Math.max(0, Math.min(old.end, track.end) - Math.max(old.start, track.start));
-      if (overlap < .6 * (old.end - old.start)) return false;
-      const errors = old.points.filter((p, i) => i % 8 === 0 && p.t >= track.start && p.t <= track.end).map(p => {
-        const q = track.points.reduce((a, b) => Math.abs(b.t - p.t) < Math.abs(a.t - p.t) ? b : a);
-        return Math.abs(q.hz - p.hz) / p.hz;
-      });
-      return errors.length > 0 && median(errors) < .02;
-    }));
-    if (!best.tracks.length || (result.tracks.length > best.tracks.length && retains)) best = result;
-    if (best.tracks.length >= 2) break;
+    const retains = best.tracks.every(old => result.tracks.some(track => samePassage(old, track)));
+    if (!best.tracks.length || (sensitive ? quality(result) > quality(best) : result.tracks.length > best.tracks.length && retains)) best = result;
+    if (best.tracks.length >= 2 && !sensitive) break;
   }
   best.resolutionAttempts = [...attempts];
   if (!best.tracks.length) best.warnings.unshift(`Ingen automatiske spor ved FFT ${attempts.map(size => size.toLocaleString('da-DK')).join(', ')}. Zoom ind og undersøg lyden; en optagelse indeholder ikke nødvendigvis en målbar flykurve.`);
@@ -41,6 +38,7 @@ export function analyzeSignal(samples: Float32Array, sampleRate: number, progres
   if (samples.length / sampleRate < 5) throw new Error('Vælg mindst 5 sekunders lyd. 30–90 sekunder er bedre.');
   if (samples.length / sampleRate > 1800.1) throw new Error('Klip optagelsen ned til højst 30 minutter.');
   if (![8192, 16384, 32768].includes(options.fftSize) || !Number.isFinite(options.minHz) || !Number.isFinite(options.maxHz) || options.minHz < 20 || options.maxHz > Math.min(2000, sampleRate / 2) || options.maxHz - options.minHz < 20) throw new Error('Vælg 20–2000 Hz, mindst 20 Hz båndbredde og en gyldig FFT-størrelse.');
+  const profile = sensitivityProfile(options.sensitivity);
   const n = options.fftSize, lo = Math.ceil(options.minHz * n / sampleRate), hi = Math.floor(options.maxHz * n / sampleRate);
   let hop = n / 8;
   // Bound spectrum/DP memory on long recordings and narrow high-resolution views.
@@ -64,7 +62,7 @@ export function analyzeSignal(samples: Float32Array, sampleRate: number, progres
     if (f % 30 === 0) progress({phase: 'spectrum', text: `Frekvensvindue ${f + 1} af ${frames}`, progress: .08 + .64 * f / frames});
   }
   progress({phase: 'ridges', text: 'Følger sammenhængende tonale spor', progress: .74});
-  const tracks = extractRidges(db, frames, bins, lo, sampleRate, n, hop);
+  const tracks = extractRidges(db, frames, bins, lo, sampleRate, n, hop, profile.value);
   const warnings: string[] = [];
   const rms = Math.sqrt(energy / samples.length);
   if (rms < .00005) warnings.push('Meget lavt lydniveau eller intet lydspor.');
@@ -73,12 +71,13 @@ export function analyzeSignal(samples: Float32Array, sampleRate: number, progres
   if (samples.length / sampleRate < 20) warnings.push('Et kort klip giver få observationer og større tvetydighed.');
   warnings.push('Tonale spor kan også komme fra musik, biler eller maskiner. De er ikke i sig selv bevis for et fly.');
   progress({phase: 'ready', text: 'Den lokale lydanalyse er klar', progress: 1});
-  return {duration: samples.length / sampleRate, sampleRate, fftSize: n, hopSize: hop, frames, bins,
+  return {sensitivity: profile.value, duration: samples.length / sampleRate, sampleRate, fftSize: n, hopSize: hop, frames, bins,
     minHz: lo * sampleRate / n, maxHz: hi * sampleRate / n, db, waveform, tracks, rms, peak,
     clippingRatio: clipped / samples.length, warnings};
 }
 
-function extractRidges(db: Float32Array, frames: number, bins: number, lo: number, sr: number, n: number, hop: number): Ridge[] {
+function extractRidges(db: Float32Array, frames: number, bins: number, lo: number, sr: number, n: number, hop: number, sensitivity: number): Ridge[] {
+  const profile = sensitivityProfile(sensitivity);
   const prominence = new Float32Array(db.length), masked = new Uint8Array(db.length);
   // Local frequency-background contrast in dB; excludes ±3 bins around a peak.
   for (let f = 0; f < frames; f++) {
@@ -123,7 +122,7 @@ function extractRidges(db: Float32Array, frames: number, bins: number, lo: numbe
       const bin = path[f], p = f * bins + bin;
       for (let k = Math.max(0, bin - 5); k <= Math.min(bins - 1, bin + 5); k++) masked[f * bins + k] = 1;
       // Relative contrast, not an absolute level: weak recordings must remain analyzable.
-      if (prominence[p] < 10 || bin < 2 || bin > bins - 3) continue;
+      if (prominence[p] < profile.minPointContrastDb || bin < 2 || bin > bins - 3) continue;
       // A path beside a broad peak is not another independent tonal measurement.
       if (db[p] < db[p - 1] || db[p] < db[p + 1]) continue;
       const ym = db[p - 1], y0 = db[p], yp = db[p + 1];
@@ -143,12 +142,12 @@ function extractRidges(db: Float32Array, frames: number, bins: number, lo: numbe
       const fifth = Math.max(4, Math.floor(points.length / 5));
       const first = median(points.slice(0, fifth).map(p => p.hz)), last = median(points.slice(-fifth).map(p => p.hz));
       const drift = first - last, span = points.at(-1)!.t - points[0].t;
-      if (span < 8 || points.length / (span * sr / hop + 1) < .75 || drift < Math.max(3.5, first * .025)) continue;
+      if (span < profile.minDurationSeconds || points.length / (span * sr / hop + 1) < profile.minTrackCoverage || drift < Math.max(profile.minDriftHz, first * profile.minRelativeDrift)) continue;
       // Reject wandering paths assembled from random peaks at finer FFT resolutions.
       // Curves with substantial reversals are not handled by this automatic tracker.
       const totalVariation = points.slice(1).reduce((sum, p, i) => sum + Math.abs(p.hz - points[i].hz), 0);
       const netFall = points[0].hz - points.at(-1)!.hz;
-      if (netFall <= 0 || totalVariation > 2 * netFall) continue;
+      if (netFall <= 0 || totalVariation > profile.maxVariationRatio * netFall) continue;
       // Reject very jumpy tracks and near-identical harmonic copies. This is a heuristic, not ground truth.
       const jumps = points.slice(1).filter((p, i) => Math.abs(p.hz - points[i].hz) / Math.max(.1, p.t - points[i].t) > 35).length;
       if (jumps / points.length > .08) continue;

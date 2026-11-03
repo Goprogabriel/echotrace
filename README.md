@@ -56,6 +56,7 @@ Appen bruger relative filstier og hash-routing (`#/lab`, `#/method`, `#/privacy`
 
 - Enkel forside med filvalg, demo, en kort introduktion og svar på de vigtigste spørgsmål.
 - Lokal filvælger og drag-and-drop, original video-/lydafspiller og faktisk målt waveform/spektrogram.
+- Én følsomhedsskyder (0–100) til både lydanalyse og flymatch. Se de konkrete krav til varighed, frekvensfejl og lydstøtte, og anvend dem med ny analyse. Standard 50 bevarer de hidtidige grænser.
 - Automatisk genforsøg med finere frekvensopløsning ved færre end to spor, så et kraftigt spor ikke alene stopper søgningen efter svagere spor.
 - Lydafkodning via browseren; FFT, tonale spor og fysisk kurvematch i Web Workers.
 - Indtastning af UTC-tid og automatisk global kandidatsøgning — ingen koordinater eller søgeradius. Urusikkerhed og mikrofonhøjde kan justeres under avancerede parametre.

@@ -9,6 +9,8 @@ import { startReveals } from './components/ui.js';
 import { drawIllustrationSpectrum, drawSpectrogram, drawWaveform, startHeroCanvas, spectrumBounds } from './components/visuals.js';
 import { bindPlayback } from './components/playback.js';
 import { mountMap } from './components/map.js';
+import { sensitivitySummary, sensitivityPending } from './components/sensitivity.js';
+import { selectTracksAfterAnalysis } from './core/tracks.js';
 setLanguage(languageFromUrl(location.href));
 const root = document.querySelector('#app');
 const fileInput = document.querySelector('#media-input');
@@ -176,7 +178,9 @@ async function analyzeFile(file, demo, capture = false) {
             pcm = null;
             if (state.blobUrl)
                 URL.revokeObjectURL(state.blobUrl);
+            const sensitivity = state.sensitivity;
             state = initialState();
+            state.sensitivity = sensitivity;
             state.file = file;
             state.blobUrl = URL.createObjectURL(file);
             if (demo) {
@@ -225,9 +229,10 @@ function runSignalWorker(decoded, id, adaptive = true) {
         if (e.data.type === 'error')
             fail(new Error(e.data.message), id);
         if (e.data.type === 'analysis') {
+            const previous = state.analysis?.tracks.length ? state.analysis.tracks.filter(t => state.selectedTracks.includes(t.id)) : null;
             state.analysis = e.data.data;
             state.signalOptions.fftSize = state.analysis.fftSize;
-            state.selectedTracks = state.analysis.tracks.slice(0, 3).map(t => t.id);
+            state.selectedTracks = selectTracksAfterAnalysis(previous, state.analysis.tracks);
             state.spectrumView = { start: 0, end: state.analysis.duration, minHz: state.analysis.minHz, maxHz: state.analysis.maxHz, gain: 0 };
             state.stage = 'ready';
             worker?.terminate();
@@ -239,7 +244,7 @@ function runSignalWorker(decoded, id, adaptive = true) {
                 root.querySelector('#search-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
     };
-    worker.postMessage({ type: 'analyze', samples: decoded.samples, sampleRate: decoded.sampleRate, options: state.signalOptions, adaptive }, [decoded.samples.buffer]);
+    worker.postMessage({ type: 'analyze', samples: decoded.samples, sampleRate: decoded.sampleRate, options: { ...state.signalOptions, sensitivity: state.sensitivity }, adaptive }, [decoded.samples.buffer]);
 }
 function getConfig() {
     const f = state.form;
@@ -248,7 +253,7 @@ function getConfig() {
     const date = Date.parse(`${f.date}Z`) / 1000;
     if (!Number.isFinite(date) || date < 946684800 || date > 4133980800)
         throw new Error('Angiv en gyldig optagelsestid mellem år 2000 og 2100.');
-    const config = { global: true, lat: 0, lon: 0, radiusKm: 50, startTime: date, clockUncertainty: Number(f.clock), receiverAltitudeM: Number(f.altitude), soundSpeed: Number(f.sound) };
+    const config = { global: true, lat: 0, lon: 0, radiusKm: 50, startTime: date, clockUncertainty: Number(f.clock), receiverAltitudeM: Number(f.altitude), soundSpeed: Number(f.sound), sensitivity: state.sensitivity };
     if (!Object.values(config).every(v => typeof v === 'boolean' || Number.isFinite(v)) || config.clockUncertainty < 0 || config.clockUncertainty > 60 || config.receiverAltitudeM < -400 || config.receiverAltitudeM > 9000 || config.soundSpeed < 300 || config.soundSpeed > 370)
         throw new Error('Kontrollér tidspunkt, urusikkerhed, mikrofonhøjde og lydhastighed.');
     return config;
@@ -259,6 +264,8 @@ async function runMatching() {
     stopJob();
     const id = job;
     try {
+        if (sensitivityPending(state))
+            throw new Error('Anvend den nye følsomhed og analysér lyden igen før søgningen.');
         const tracks = state.analysis.tracks.filter(t => state.selectedTracks.includes(t.id));
         if (!tracks.length || tracks.length > 3)
             throw new Error('Vælg mellem ét og tre tonale spor til søgningen.');
@@ -330,8 +337,8 @@ function exportReport() {
         return;
     const report = { schema: 'echotrace-report/3', language: getLanguage(), engineVersion: '0.1.0', exportedAt: new Date().toISOString(), synthetic: state.demo || state.dataset?.synthetic,
         disclaimer: translateText('Eksperimentelle hypoteser, ikke bekræftede placeringer. Fejlmål er frekvensafvigelser, ikke sandsynligheder. Ingen kalibreret lokationspræcision. Brug ikke rapporten til at identificere en person.'),
-        file: { name: state.file?.name, size: state.file?.size, type: state.file?.type }, decoding: state.decoded ? { ...state.decoded, method: translateText(state.decoded.method), warnings: state.decoded.warnings.map(translateText) } : null, search: { mode: 'global', startTime: state.config.startTime, clockUncertainty: state.config.clockUncertainty, receiverAltitudeM: state.config.receiverAltitudeM, soundSpeed: state.config.soundSpeed },
-        signal: { duration: state.analysis.duration, sampleRate: state.analysis.sampleRate, fftSize: state.analysis.fftSize, hopSize: state.analysis.hopSize, resolutionAttempts: state.analysis.resolutionAttempts, minHz: state.analysis.minHz, maxHz: state.analysis.maxHz, tracks: state.analysis.tracks, selectedTracks: state.selectedTracks, warnings: state.analysis.warnings.map(translateText) },
+        file: { name: state.file?.name, size: state.file?.size, type: state.file?.type }, decoding: state.decoded ? { ...state.decoded, method: translateText(state.decoded.method), warnings: state.decoded.warnings.map(translateText) } : null, search: { mode: 'global', sensitivity: state.config.sensitivity ?? 50, startTime: state.config.startTime, clockUncertainty: state.config.clockUncertainty, receiverAltitudeM: state.config.receiverAltitudeM, soundSpeed: state.config.soundSpeed },
+        signal: { sensitivity: state.analysis.sensitivity ?? 50, duration: state.analysis.duration, sampleRate: state.analysis.sampleRate, fftSize: state.analysis.fftSize, hopSize: state.analysis.hopSize, resolutionAttempts: state.analysis.resolutionAttempts, minHz: state.analysis.minHz, maxHz: state.analysis.maxHz, tracks: state.analysis.tracks, selectedTracks: state.selectedTracks, warnings: state.analysis.warnings.map(translateText) },
         data: { source: state.dataset?.source, license: state.dataset?.license, fetchedAt: state.dataset?.fetchedAt, flightCount: state.dataset?.flights.length, retrieval: state.dataset?.retrieval, warnings: state.dataset?.warnings.map(translateText) }, result: { ...state.result, warnings: state.result.warnings.map(translateText) } };
     const url = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }));
     const a = document.createElement('a');
@@ -356,10 +363,10 @@ function signalAction(action) {
         }
         else if (action === 'spectrum-reset')
             state.spectrumView = { start: 0, end: a.duration, minHz: a.minHz, maxHz: a.maxHz, gain: 0 };
-        else if (action === 'reanalyze') {
+        else if (action === 'reanalyze' || action === 'sensitivity-apply') {
             if (!pcm || !state.decoded)
                 throw new Error('Åbn optagelsen igen for at genanalysere.');
-            const fftSize = value('signal-fft'), minHz = value('signal-min'), maxHz = value('signal-max');
+            const fftSize = action === 'sensitivity-apply' ? state.signalOptions.fftSize : value('signal-fft'), minHz = action === 'sensitivity-apply' ? state.signalOptions.minHz : value('signal-min'), maxHz = action === 'sensitivity-apply' ? state.signalOptions.maxHz : value('signal-max');
             if (![8192, 16384, 32768].includes(fftSize) || ![minHz, maxHz].every(Number.isFinite) || minHz < 20 || maxHz > 2000 || maxHz - minHz < 20)
                 throw new Error('Vælg et analysebånd inden for 20–2000 Hz, mindst 20 Hz bredt.');
             stopJob();
@@ -368,7 +375,7 @@ function signalAction(action) {
             state.stage = 'analyzing';
             state.progress = { phase: 'spectrum', text: 'Genanalyserer den lokale lyd', progress: .01 };
             render();
-            runSignalWorker({ ...state.decoded, samples: pcm.slice() }, job, false);
+            runSignalWorker({ ...state.decoded, samples: pcm.slice() }, job, action === 'sensitivity-apply');
             return;
         }
         render();
@@ -420,6 +427,9 @@ root.addEventListener('click', e => {
         return;
     }
     switch (target.dataset.action) {
+        case 'sensitivity-apply':
+            signalAction('sensitivity-apply');
+            break;
         case 'upload':
             fileInput.value = '';
             fileInput.click();
@@ -456,6 +466,18 @@ root.addEventListener('click', e => {
 });
 root.addEventListener('input', e => {
     const el = e.target;
+    if (el.name === 'sensitivity') {
+        if (isBusy(state))
+            return;
+        state.sensitivity = Number(el.value);
+        const output = root.querySelector('#sensitivity-value');
+        if (output)
+            output.textContent = `${state.sensitivity} / 100`;
+        const summary = root.querySelector('#sensitivity-summary');
+        if (summary)
+            summary.textContent = translateText(sensitivitySummary(state.sensitivity));
+        return;
+    }
     if (el.closest('#signal-controls'))
         return;
     if (!el.name)
@@ -469,6 +491,15 @@ root.addEventListener('input', e => {
 });
 root.addEventListener('change', e => {
     const el = e.target;
+    if (el.name === 'sensitivity') {
+        if (isBusy(state))
+            return;
+        state.sensitivity = Number(el.value);
+        invalidateResult();
+        render();
+        root.querySelector('#sensitivity')?.focus({ preventScroll: true });
+        return;
+    }
     if (!el.dataset.track || isBusy(state))
         return;
     if (el.checked && state.selectedTracks.length >= 3) {
