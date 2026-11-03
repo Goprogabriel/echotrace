@@ -109,3 +109,11 @@ Kør demoen over HTTPS, prøv en egen lille understøttet fil, kontrollér netv�
 - Et livekald den 3. november returnerede to historiske flybaner uden geografisk filter samt `access-control-allow-origin: *`. Arkivet angav 2025-04-28 til 2026-11-02. Hentning af hele det globale udsnit er ikke belastningstestet.
 - Syntetisk test med 200 flybaner spredt over verden afsøgte alle 200 og undersøgte 64 områder på cirka 3,8 sekunder på udviklingsmaskinen. Det er ikke et løfte om runtime på reelle globale data eller mobiler.
 - Lokal browserkontrol: demoen gennemfører, resultatkortet vises, og søgeformularen har ét datofelt og ingen koordinat-/radiusfelter. Der er ingen uafhængig real-world-lokationsvalidering.
+
+## Synkroniseret afspilning og nyt logo · 3. november 2026
+
+- TypeScript og build bestod. 44 tests bestod i den isolerede release, inklusive seks nye tests for zoomet tidsmapping, video→graf, tastatur, horisontal rulning, metadata-genindlæsning og oprydning.
+- Browserkontrol på den syntetiske demo: klik i spektrogrammet flyttede videoen til 29,870182 s. Alle tre grafmarkører viste samme tid. Efter spolning i videoens native kontrol viste video og alle markører 32,5461 s.
+- Ved åbning af manuel optegning blev tidspunktet bevaret. Klik i grafen tilføjede ét anker og ændrede ikke videoens tidspunkt.
+- Markørerne er DOM-overlays og genberegner ikke FFT under afspilning. Uden for et zoomet tidsudsnit vises tidspunktet ved kanten med en forklaring.
+- Logo og favicon bruger et nyt vektorsymbol med ekkoringe og frekvenskurve. Ingen nye runtimeafhængigheder.

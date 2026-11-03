@@ -57,3 +57,18 @@ body{background-image:radial-gradient(ellipse at 90% 0,#26387924,transparent 45%
 .search-coverage{padding:17px 20px;border:1px solid var(--line);background:var(--panel);border-radius:10px;margin-bottom:22px;font-size:13px}
 .search-coverage strong{display:block;font-weight:550;margin-bottom:7px;color:var(--text)}
 .search-coverage p{font-size:12px;line-height:1.8}.search-coverage p+p{margin-top:4px}
+
+/* Brand: echo rings with a frequency trace. */
+.logo{gap:10px;letter-spacing:-.9px}.brand-mark{display:grid;place-items:center;width:42px;height:42px;background:linear-gradient(135deg,#9aafff12,#d38be30c);border:1px solid #9aafff26;border-radius:13px;color:#adc0ff;flex-shrink:0}
+.brand-orbit{color:#8099df}.brand-echo{color:#b394e6}.brand-wave{color:#e4dbff}.brand-word{font-weight:650}.brand-word>span{font-weight:450;color:#b0bdd7}
+.logo:hover .brand-mark{border-color:#9aafff70;box-shadow:0 0 22px #9aafff16}.site-footer .brand-mark{width:36px;height:36px}.site-footer .brand-mark svg{width:32px;height:32px}
+/* Shared playback cursors stay above canvases, outside their color filters. */
+.lab-spectrum,.waveform-strip,.fit-panel{position:relative}.lab-spectrum canvas,.waveform-strip canvas,#result-spectrum{cursor:crosshair;touch-action:pan-y}
+.playback-readout{font:11px var(--mono);font-weight:400;color:#c3cde3;font-variant-numeric:tabular-nums;white-space:nowrap}
+.playback-cursor{position:absolute;width:2px;background:#f4d28b;box-shadow:0 0 0 1px #080d1766;z-index:4;pointer-events:none;will-change:left}
+.playback-cursor-label{position:absolute;top:3px;left:7px;padding:3px 6px;background:#0c1328ed;border:1px solid #e6c47755;border-radius:4px;font:10px var(--mono);color:#ffe4ad;white-space:nowrap}
+.playback-cursor.label-left .playback-cursor-label{left:auto;right:7px}.playback-cursor.outside-window{background:none;border-left:2px dashed #e8c784;opacity:.8}
+.waveform-strip .playback-cursor-label{display:none}.lab-spectrum.tracing canvas{cursor:crosshair}
+@media(max-width:650px){.brand-mark{width:34px;height:34px;border-radius:10px}.brand-mark svg{width:32px;height:32px}.logo{gap:8px}.brand-word{font-size:21px}.playback-readout{font-size:10px}}
+
+.signal-outcome{padding:14px;border:1px solid var(--line-strong);border-radius:8px;background:var(--panel-soft);margin-bottom:14px}.signal-outcome strong{display:block;font-size:13px;line-height:1.5}.signal-outcome p{font-size:12px;line-height:1.7;margin:8px 0}.signal-outcome .text-link{font-size:12px}

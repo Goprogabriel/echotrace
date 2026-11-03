@@ -7,6 +7,7 @@ import { fetchFlights, importFlights, parseDataset } from './core/data.js';
 import { startReveals } from './components/ui.js';
 import { drawIllustrationSpectrum, drawSpectrogram, drawWaveform, startHeroCanvas, spectrumBounds } from './components/visuals.js';
 import { manualRidge } from './core/signal.js';
+import { bindPlayback } from './components/playback.js';
 import { mountMap } from './components/map.js';
 const root = document.querySelector('#app');
 const fileInput = document.querySelector('#media-input');
@@ -15,6 +16,7 @@ let state = initialState(), cleanups = [];
 let worker = null, controller = new AbortController(), job = 0;
 let toastTimer;
 let pcm = null;
+let playback = { url: '', time: 0, playing: false };
 const route = () => location.hash.split('?')[0] || '#/';
 function toast(message) {
     const el = document.querySelector('#toast');
@@ -24,8 +26,12 @@ function toast(message) {
     toastTimer = setTimeout(() => el.classList.remove('show'), 5500);
 }
 function render() {
+    const previousMedia = root.querySelector('.video-frame video,.video-frame audio');
+    if (previousMedia && previousMedia.readyState >= 1 && previousMedia.getAttribute('src') === state.blobUrl)
+        playback = { url: state.blobUrl, time: previousMedia.currentTime || 0, playing: !previousMedia.paused && !previousMedia.ended };
     cleanups.forEach(fn => fn());
     cleanups = [];
+    previousMedia?.pause();
     const r = route();
     root.innerHTML = r === '#/lab' ? labPage(state) : r === '#/privacy' ? docsPage('privacy') : r === '#/method' ? docsPage('method') : homePage();
     document.title = r === '#/lab' ? 'Signal-lab — Echotrace' : r === '#/privacy' ? 'Privatliv — Echotrace' : r === '#/method' ? 'Metoden — Echotrace' : 'Echotrace — Find sporet i lyden';
@@ -66,6 +72,19 @@ function initLab() {
     root.querySelectorAll('canvas').forEach(c => observer.observe(c));
     cleanups.push(() => observer.disconnect());
     draw();
+    const media = root.querySelector('.video-frame video,.video-frame audio');
+    if (media) {
+        const plots = ['lab-spectrum', 'waveform', 'result-spectrum'].flatMap(id => {
+            const canvas = root.querySelector(`#${id}`);
+            if (!canvas)
+                return [];
+            return [{ canvas, window: () => id === 'lab-spectrum' ? { start: state.spectrumView.start, end: state.spectrumView.end || state.analysis?.duration || media.duration } : { start: 0, end: state.analysis?.duration || media.duration }, bounds: () => {
+                        const r = canvas.getBoundingClientRect();
+                        return id === 'waveform' ? { left: 0, top: 0, width: r.width, height: r.height } : spectrumBounds(r.width, r.height);
+                    } }];
+        });
+        cleanups.push(bindPlayback(media, { plots, readouts: root.querySelectorAll('[data-playback-time]'), canSeek: () => !state.tracing && !isBusy(state), savedTime: playback.url === state.blobUrl ? playback.time : 0, resume: playback.url === state.blobUrl && playback.playing, onPosition: (time, playing) => { playback = { url: state.blobUrl, time, playing }; } }));
+    }
     const spectrum = root.querySelector('#lab-spectrum');
     if (spectrum)
         spectrum.onclick = e => {

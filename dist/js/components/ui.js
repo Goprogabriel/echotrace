@@ -30,7 +30,7 @@ export function icon(name, cls = '') {
     return `<svg class="icon ${cls}" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name] || icons.wave}</svg>`;
 }
 export function logo() {
-    return `<a href="#/" class="logo" aria-label="Echotrace — forside"><span class="logo-symbol"><i></i><i></i><i></i><i></i><i></i></span>echotrace<span class="logo-dot">°</span></a>`;
+    return `<a href="#/" class="logo" aria-label="Echotrace — forside"><span class="brand-mark" aria-hidden="true"><svg width="38" height="38" viewBox="0 0 38 38" fill="none"><path class="brand-orbit" d="M29.7 9.7a14 14 0 1 0 0 18.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path class="brand-echo" d="M25.5 13.2a8.7 8.7 0 1 0 0 11.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path class="brand-wave" d="M10 19h4l2.5-7 4 14 3.5-18 3 15 2-4H34" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/></svg></span><span class="brand-word">echo<span>trace</span></span></a>`;
 }
 export function header(lab = false) {
     return `<header class="site-header"><div class="header-inner">${logo()}<nav aria-label="Hovedmenu">${lab ? '<a href="#/" class="nav-back">Til forsiden</a><a href="#/method">Metoden</a>' : '<button data-scroll="how">Sådan virker det</button><a href="#/method">Metoden</a><a href="#/privacy">Privatliv</a>'}</nav><button class="btn btn-primary btn-small" data-action="upload">${icon('upload')}<span>Analyser video</span></button></div></header>`;
