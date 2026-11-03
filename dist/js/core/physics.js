@@ -40,7 +40,7 @@ export function interpolate(f, t) {
  * Solve t_receive = t_emit + |source(t_emit)-receiver| / c.
  * Positive radial velocity is receding: f_observed/f_source = c/(c+v_radial).
  */
-export function dopplerFactor(f, receiver, receivedAt, c) {
+export function dopplerFactor(f, receiver, receivedAt, c, maxRangeM = Infinity) {
     if (!(c >= 300 && c <= 370))
         return null;
     let te = Math.min(f.times[f.times.length - 1], Math.max(f.times[0], receivedAt - 20));
@@ -59,7 +59,7 @@ export function dopplerFactor(f, receiver, receivedAt, c) {
         factor = c / (c + radial);
         const residual = te + range / c - receivedAt;
         if (Math.abs(residual) < .002)
-            return factor;
+            return range <= maxRangeM ? factor : null;
         te -= residual * factor;
         if (te < f.times[0] || te > f.times[f.times.length - 1])
             return null;

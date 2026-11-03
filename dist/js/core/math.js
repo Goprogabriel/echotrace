@@ -45,5 +45,9 @@ export function haversine(a, b) {
     return 6371000 * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(Math.max(0, 1 - s)));
 }
 export function offsetPosition(lat, lon, eastM, northM) {
-    return { lat: lat + northM / 111195, lon: lon + eastM / (111195 * Math.cos(lat * Math.PI / 180)) };
+    const distance = Math.hypot(eastM, northM) / 6371000, bearing = Math.atan2(eastM, northM), rad = Math.PI / 180;
+    const phi = lat * rad, lambda = lon * rad;
+    const nextLat = Math.asin(Math.max(-1, Math.min(1, Math.sin(phi) * Math.cos(distance) + Math.cos(phi) * Math.sin(distance) * Math.cos(bearing))));
+    const nextLon = lambda + Math.atan2(Math.sin(bearing) * Math.sin(distance) * Math.cos(phi), Math.cos(distance) - Math.sin(phi) * Math.sin(nextLat));
+    return { lat: nextLat / rad, lon: ((nextLon / rad + 180) % 360 + 360) % 360 - 180 };
 }

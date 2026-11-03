@@ -55,10 +55,10 @@ Appen bruger relative filstier og hash-routing (`#/lab`, `#/method`, `#/privacy`
 - Enkel forside med filvalg, demo, en kort introduktion og svar på de vigtigste spørgsmål.
 - Lokal filvælger og drag-and-drop, original video-/lydafspiller og faktisk målt waveform/spektrogram.
 - Lydafkodning via browseren; FFT, tonale spor og fysisk kurvematch i Web Workers.
-- Indtastning af UTC-tid, geografisk søgeområde, urusikkerhed og mikrofonhøjde.
+- Indtastning af UTC-tid og automatisk global kandidatsøgning — ingen koordinater eller søgeradius. Urusikkerhed og mikrofonhøjde kan justeres under avancerede parametre.
 - Adapter til adsb.aeros dokumenterede historiske API samt lokal JSON-, CSV- og gzip-import.
 - Resultater med koordinater, indtastet optagelsestid, urjustering, alternative kandidater, flybaner, modelfejl og forklaringer.
-- Interaktive OpenStreetMap-kort i søgeområde og resultater. Klik for at vælge centrum, træk for at flytte, og zoom med +/−, to fingre eller Ctrl/Command + rul. Baggrundskort kan slås fra.
+- Interaktive OpenStreetMap-kort viser de beregnede mulige områder. Træk for at flytte, og zoom med +/−, to fingre eller Ctrl/Command + rul. Baggrundskort kan slås fra.
 - Eksport af JSON-rapport — ikke den rå mediefil.
 - En **tydeligt mærket syntetisk demovideo**, lydfil og to simulerede flybaner. Demoen kører den rigtige analyse; resultaterne er ikke hardkodet.
 - Startfiler til Windows/Mac/Linux, kildekode, tests, dokumentation og MIT-licens for koden.
@@ -71,18 +71,24 @@ Kortene bruger [OpenStreetMap](https://www.openstreetmap.org/) med synlig kildea
 
 Dette er en **kørbar eksperimentel implementering**, ikke en valideret tjeneste, der finder den præcise adresse fra enhver video.
 
-Du skal selv kende optagelsens omtrentlige starttid i UTC og et afgrænset geografisk område. Den analyserede lyd skal indeholde brugbare, vedvarende tonale spor, og flydata skal dække det relevante tidsrum. At et tonalt spor findes, betyder ikke i sig selv, at det kommer fra et fly.
+Du skal selv kende optagelsens starttid i UTC. Appen henter tidsrelevante flybaner uden geografisk filter og vælger selv mulige områder til nærmere undersøgelse. Den analyserede lyd skal indeholde brugbare, vedvarende tonale spor, og flydata skal dække det relevante tidsrum. At et tonalt spor findes, betyder ikke i sig selv, at det kommer fra et fly.
 
 Et “muligt kandidatområde” er en matematisk hypotese. Modelfejl er **ikke** sikkerhedsprocent; gridafstand er **ikke** dokumenteret lokationspræcision. Der er ingen uafhængig real-world-validering i denne version. Et godt resultat på den syntetiske demo dokumenterer kun, at den idealiserede model og kodeforløbet hænger sammen.
 
-Den eksterne API-adapter er implementeret efter den offentlige dokumentation og testet med lokale svar-eksempler. **Et live API-kald og dets CORS-adfærd kunne ikke verificeres i leveringsmiljøet.** Hvis udbyderen er nede, ændrer format eller ikke har din dato, viser appen en fejl og tilbyder lokal import — den opfinder ikke data. Eksterne flydata er ikke inkluderet i ZIP’en; kun syntetiske eksempler medfølger.
+Den eksterne API-adapter er implementeret efter den offentlige dokumentation og testet med lokale svar-eksempler. Et afgrænset livekald med to flybaner og CORS-headeren er verificeret; en komplet global hentning er ikke belastningstestet. Hvis udbyderen er nede, ændrer format eller ikke har din dato, viser appen en fejl og tilbyder lokal import — den opfinder ikke data. Eksterne flydata er ikke inkluderet i ZIP’en; kun syntetiske eksempler medfølger.
+
+### Global søgning og gratis drift
+
+Der hentes sider fra adsb.aero med et tidsfilter og uden geografisk filter. Hentningen stopper ved komplet svar eller en synlig sikkerhedsgrænse: 200 sider, 20.000 flybaner eller 1.000.000 datapunkter. Arkivdækning og manglende flydata betyder, at et komplet API-svar stadig ikke er alle faktiske fly.
+
+Matcheren screener områder langs flybanerne og undersøger højst 64 lovende områder på finere grids. Den bruger højst 120 km lydafstand og højst 100 nærliggende fly pr. detaljeret område. Det er en heuristisk global kandidatsøgning, ikke en udtømmende afsøgning af hvert punkt på jorden. Resultatet viser datadækning og beregningsomfang. Beregningerne kører i en Worker på brugerens enhed og kan annulleres.
 
 ## Første rigtige analyse
 
 1. Vælg din egen optagelse på 5 sekunder–30 minutter, højst 150 MB. En stationær mikrofon, tydelig flystøj og lidt tale/musik/vind er et bedre udgangspunkt.
 2. Se, om analysen finder anvendelige tonale spor. Zoom ind på passagen, justér kontrast og FFT efter behov, og tegn et synligt svagt spor manuelt, hvis automatisk sporing ikke finder det. Vælg ét til tre spor til søgningen.
-3. Angiv **starttid i UTC** og et søgecentrum. Filens ændringsdato er ikke automatisk optagelsestid. Tidszonekonvertering skal være korrekt.
-4. Importér flydata lokalt, eller giv eksplicit tilladelse til at hente et afgrænset udsnit fra API’en.
+3. Angiv **starttid i UTC**. Du skal ikke angive et sted. Filens ændringsdato er ikke automatisk optagelsestid. Tidszonekonvertering skal være korrekt.
+4. Importér flydata lokalt, eller giv eksplicit tilladelse til at hente det globale tidsudsnit fra API’en.
 5. Læs kandidater, kurver og forbehold. “Ingen konklusion” er et gyldigt resultat.
 
 Video-codecs varierer mellem browsere. MP4/MOV/WebM er containere, ikke garantier for en understøttet lydcodec. Hvis direkte afkodning fejler, findes et brugeraktiveret AudioWorklet-afspilningsudtræk. Det er en fallback, ikke en universel codec-konverter. WAV kan være det enkleste alternativ.
@@ -91,7 +97,7 @@ Video-codecs varierer mellem browsere. MP4/MOV/WebM er containere, ikke garantie
 
 Mediefilen forbliver i browserhukommelsen. Ingen analytics, login, tredjepartsskrifttyper, kamera-/mikrofonadgang, automatisk geolokation eller database. Ingen `localStorage`/IndexedDB.
 
-Tillader du flyforespørgslen, modtager flytjenesten søgeområde, tidsinterval og almindelige forbindelsesoplysninger, herunder IP — **ikke** video, lyd eller beregnede resultater. OpenStreetMap-kortfliser hentes som standard på kortvisningerne; kortudbyderen ser det viste kortudsnit og din IP. Baggrundskort kan slås fra. Hostens almindelige adgangslogs kan stadig registrere besøg på hjemmesiden. Det er ikke det samme som upload af dine medier.
+Tillader du flyforespørgslen, modtager flytjenesten tidsinterval og almindelige forbindelsesoplysninger, herunder IP — **ikke** video, lyd eller beregnede resultater. OpenStreetMap-kortfliser hentes som standard på kortvisningerne; kortudbyderen ser det viste kortudsnit og din IP. Baggrundskort kan slås fra. Hostens almindelige adgangslogs kan stadig registrere besøg på hjemmesiden. Det er ikke det samme som upload af dine medier.
 
 Brug kun egne optagelser eller materiale, du må undersøge. Eksporterede rapporter indeholder tid og mulige koordinater og bør behandles som følsomme.
 

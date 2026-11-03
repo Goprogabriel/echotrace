@@ -10,13 +10,38 @@ function unproject(x, y, z) {
 }
 let mapTilesEnabled = true;
 export function mountMap(container, options) {
-    container.innerHTML = `<div class="map-tiles"></div><canvas class="geo-canvas" tabindex="0" aria-label="${options.onPick ? 'Vælg søgeområde på kortet. Klik for at sætte centrum.' : 'Kort med flybaner og kandidatområder.'} Brug piletaster til at flytte og plus/minus til at zoome. Ctrl eller Command og rul zoomer også."></canvas><div class="map-controls"><button type="button" data-map="plus" aria-label="Zoom ind">${icon('plus')}</button><button type="button" data-map="minus" aria-label="Zoom ud">${icon('minus')}</button><button type="button" data-map="fit" aria-label="Vis hele søgeområdet">${icon('target')}</button></div><div class="map-bottom"><label class="tile-toggle"><input type="checkbox" data-map="tiles" ${mapTilesEnabled ? 'checked' : ''}><span>Vis baggrundskort</span></label><span class="map-attribution">${mapTilesEnabled ? '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap-bidragsydere</a>' : 'Geografisk grid · træk for at flytte'}</span></div><div class="map-load-error" role="status" hidden>Kortfliser kunne ikke hentes. Du kan stadig bruge koordinater, markører og zoom.</div>`;
+    container.innerHTML = `<div class="map-tiles"></div><canvas class="geo-canvas" tabindex="0" aria-label="${options.onPick ? 'Vælg søgeområde på kortet. Klik for at sætte centrum.' : 'Kort med flybaner og kandidatområder.'} Brug piletaster til at flytte og plus/minus til at zoome. Ctrl eller Command og rul zoomer også."></canvas><div class="map-controls"><button type="button" data-map="plus" aria-label="Zoom ind">${icon('plus')}</button><button type="button" data-map="minus" aria-label="Zoom ud">${icon('minus')}</button><button type="button" data-map="fit" aria-label="${options.config.global ? 'Vis alle mulige områder' : 'Vis hele søgeområdet'}">${icon('target')}</button></div><div class="map-bottom"><label class="tile-toggle"><input type="checkbox" data-map="tiles" ${mapTilesEnabled ? 'checked' : ''}><span>Vis baggrundskort</span></label><span class="map-attribution">${mapTilesEnabled ? '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap-bidragsydere</a>' : 'Geografisk grid · træk for at flytte'}</span></div><div class="map-load-error" role="status" hidden>Kortfliser kunne ikke hentes. Du kan stadig bruge koordinater, markører og zoom.</div>`;
     const canvas = container.querySelector('canvas'), tiles = container.querySelector('.map-tiles');
     let centerLat = options.config.lat, centerLon = options.config.lon, zoom = 10, enabled = mapTilesEnabled;
     let dragging = null;
     let tileKey = '';
     const tileError = container.querySelector('.map-load-error');
-    const fit = () => { const rect = container.getBoundingClientRect(); zoom = clamp(Math.floor(Math.log2(40075016 * Math.cos(options.config.lat * Math.PI / 180) * Math.min(rect.width, rect.height) / (options.config.radiusKm * 2600 * 256))), 2, 17); centerLat = options.config.lat; centerLon = options.config.lon; draw(); };
+    const fit = () => {
+        const rect = container.getBoundingClientRect();
+        if (options.config.global) {
+            if (!options.candidates.length) {
+                centerLat = 0;
+                centerLon = 0;
+                zoom = 2;
+                draw();
+                return;
+            }
+            const anchor = project(options.candidates[0].lat, options.candidates[0].lon, 0);
+            const points = options.candidates.map(c => { const p = project(c.lat, c.lon, 0); const dx = p[0] - anchor[0]; return [anchor[0] + dx - Math.round(dx / 256) * 256, p[1]]; });
+            const xs = points.map(p => p[0]), ys = points.map(p => p[1]);
+            const left = Math.min(...xs), right = Math.max(...xs), top = Math.min(...ys), bottom = Math.max(...ys);
+            const center = unproject((left + right) / 2, (top + bottom) / 2, 0);
+            centerLat = center[0];
+            centerLon = ((center[1] + 540) % 360) - 180;
+            zoom = clamp(Math.floor(Math.log2(Math.min(Math.max(80, rect.width - 120) / Math.max(.1, right - left), Math.max(80, rect.height - 100) / Math.max(.1, bottom - top)))), 2, 12);
+            draw();
+            return;
+        }
+        zoom = clamp(Math.floor(Math.log2(40075016 * Math.cos(options.config.lat * Math.PI / 180) * Math.min(rect.width, rect.height) / (options.config.radiusKm * 2600 * 256))), 2, 17);
+        centerLat = options.config.lat;
+        centerLon = options.config.lon;
+        draw();
+    };
     function draw() {
         const rect = container.getBoundingClientRect(), w = rect.width, h = rect.height, dpr = Math.min(2, devicePixelRatio || 1);
         canvas.width = Math.floor(w * dpr);
@@ -53,12 +78,14 @@ export function mountMap(container, options) {
             ctx.fillText(ll[0].toFixed(3) + '°', 8, y - 5);
         }
         const searchCenter = xy(options.config.lat, options.config.lon), metersPerPixel = 40075016 * Math.cos(options.config.lat * Math.PI / 180) / (256 * 2 ** zoom), r = options.config.radiusKm * 1000 / metersPerPixel;
-        ctx.setLineDash([5, 7]);
-        ctx.strokeStyle = '#47633a99';
-        ctx.beginPath();
-        ctx.arc(...searchCenter, r, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.setLineDash([]);
+        if (!options.config.global) {
+            ctx.setLineDash([5, 7]);
+            ctx.strokeStyle = '#47633a99';
+            ctx.beginPath();
+            ctx.arc(...searchCenter, r, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
         if (options.onPick) {
             ctx.strokeStyle = '#216448';
             ctx.fillStyle = '#ffffff';
@@ -215,7 +242,7 @@ export function mountMap(container, options) {
                 options.onPick(options.config.lat, options.config.lon);
                 draw();
             }
-            options.candidates.forEach((c, i) => { const p = project(c.lat, c.lon, zoom); if (Math.hypot(p[0] - center[0] + r.width / 2 - (e.clientX - r.left), p[1] - center[1] + r.height / 2 - (e.clientY - r.top)) < 24)
+            options.candidates.forEach((c, i) => { const p = project(c.lat, c.lon, zoom), world = 256 * 2 ** zoom; let dx = p[0] - center[0]; dx -= Math.round(dx / world) * world; if (Math.hypot(dx + r.width / 2 - (e.clientX - r.left), p[1] - center[1] + r.height / 2 - (e.clientY - r.top)) < 24)
                 options.onSelect(i); });
         }
         dragging = null;

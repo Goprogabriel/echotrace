@@ -29,7 +29,7 @@ loader=r'''async ({sources,fixtures})=>{
     // Opaque about:blank cannot start module workers; flatten the unchanged engine modules
     // into one classic worker for this local-only test. Production ships the original ES modules.
     if(key==='js/workers/analysis.worker.js'){
-      source=['js/core/math.js','js/core/signal.js','js/core/physics.js','js/core/matcher.js',key].map(k=>sources[k].replace(/^import .*?;$/gm,'').replace(/\bexport /g,'')).join('\n');
+      source=['js/core/math.js','js/core/signal.js','js/core/physics.js','js/core/matcher.js','js/core/global-search.js',key].map(k=>sources[k].replace(/^import .*?;$/gm,'').replace(/\bexport /g,'')).join('\n');
     }
     if(key==='js/app.js')source=source.replace(/type:\s*['"]module['"]/g,"type: 'classic'");
     source=source.replace(/new URL\((['"])([^'"]+)\1,\s*import\.meta\.url\)/g,(_,q,rel)=>JSON.stringify(build(path(key,rel))));
@@ -73,12 +73,11 @@ async def main():
   await page.locator('#search-form').wait_for(timeout=12000)
   assert not await page.locator('.lab-title .pill').count()
   await page.locator('input[name=date]').fill('2026-08-18T11:00')
-  await page.locator('input[name=lat]').fill('55.7');await page.locator('input[name=lon]').fill('12.55')
-  await page.locator('select[name=radius]').select_option('6');await page.locator('.advanced>summary').click()
+  await page.locator('.advanced>summary').click()
   await page.locator('select[name=clock]').select_option('0');await page.locator('input[name=altitude]').fill('12')
   await page.set_input_files('#data-input',str(PROJECT/'public/examples/demo-flights.json'))
   await page.locator('input[name=consent]').check()
-  await page.get_by_role('button',name='Sammenlign med flydata',exact=True).click()
+  await page.get_by_role('button',name='Find mulige steder',exact=True).click()
   await page.locator('#results').wait_for(timeout=12000)
   # Invalid media file must show an error, never a new invented result.
   await page.set_input_files('#media-input',{'name':'unsupported.txt','mimeType':'text/plain','buffer':b'not a video'})

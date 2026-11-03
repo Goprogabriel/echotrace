@@ -101,3 +101,11 @@ Kør demoen over HTTPS, prøv en egen lille understøttet fil, kontrollér netv�
 - Genanalyse af det allerede åbnede lydspor ved FFT 16.384 gennemførte og gav nye spor og kandidater. Samme passage kan opdeles ved utydelige steder eller krydsende toner; de foreslåede spor skal gennemgås af brugeren.
 - Ingen browserlogs blev rapporteret under de kontrollerede forløb. Ingen horisontal overflow ved den kontrollerede viewport på 1021 CSS-pixel. Fysiske mobiler er ikke testet i denne opdatering.
 - Ingen geolokationsvalidering på ophavsmandens rå optagelse eller andre uafhængigt sted-/tidsbestemte virkelige optagelser. Globale data, terrænhøjder og heldagssøgning er fortsat ikke implementeret.
+
+## Global kandidatsøgning fra tidspunkt · 3. november 2026
+
+- Brugeren angiver UTC-starttid uden koordinater, land eller radius. Demoen bruger global kandidatsøgning; den medfølgende kendte lokation tilføres ikke matcheren.
+- TypeScript og build bestod. 38 tests bestod i en isoleret release, herunder 10 nye tests for globale forespørgsler, pagination, datagrænser, netværksfejl, koordinatfri formular, datolinje, poler, manglende tidsoverlap og tvetydige kontinenter.
+- Et livekald den 3. november returnerede to historiske flybaner uden geografisk filter samt `access-control-allow-origin: *`. Arkivet angav 2025-04-28 til 2026-11-02. Hentning af hele det globale udsnit er ikke belastningstestet.
+- Syntetisk test med 200 flybaner spredt over verden afsøgte alle 200 og undersøgte 64 områder på cirka 3,8 sekunder på udviklingsmaskinen. Det er ikke et løfte om runtime på reelle globale data eller mobiler.
+- Lokal browserkontrol: demoen gennemfører, resultatkortet vises, og søgeformularen har ét datofelt og ingen koordinat-/radiusfelter. Der er ingen uafhængig real-world-lokationsvalidering.

@@ -6,7 +6,7 @@ Der er to indgange: den dokumenterede offentlige adsb.aero-API og egne lokale ud
 
 API-adapteren spørger først `/data-range`. Derefter foretager den én afgrænset `POST /query` med `trajectory_intersects`, `include_path: true` og `limit: 100`. Den kontrollerer den faktisk returnerede arkivperiode og advarer ved afkortede svar. Ingen automatisk polling eller ubegrænset pagination. Tjenestens aktuelle drift og live CORS skal verificeres på din host.
 
-Tidsvinduet udvides bagud til lydenes udsendelsestid; det er forkert kun at hente flypositioner fra det tidspunkt, hvor lyden blev hørt. Søgeområdet for fly er større end kandidatregionen, fordi et hørbart fly kan være langt fra mikrofonen.
+Tidsvinduet udvides bagud til lydenes udsendelsestid; det er forkert kun at hente flypositioner fra det tidspunkt, hvor lyden blev hørt. Flydata hentes uden geografisk filter. Tidspunkter for udsendelse med op til 120 km lydafstand medtages.
 
 ## Lokal JSON
 
@@ -60,7 +60,7 @@ EXAMPLE-001,SYNTHETIC,2026-08-18T10:59:02Z,55.70,12.5036,2200
 
 ## Størrelsesgrænser
 
-Højst 25 MB importfil, 50 MB udpakket gzip, 100 flybaner og 250.000 punkter samlet. JSON/CSV kan pakkes som `.json.gz`/`.csv.gz`, hvis browseren understøtter DecompressionStream.
+Højst 25 MB importfil, 50 MB udpakket gzip, 20.000 flybaner og 250.000 punkter samlet. JSON/CSV kan pakkes som `.json.gz`/`.csv.gz`, hvis browseren understøtter DecompressionStream.
 
 Dette er **ikke** en parser til vilkårlige readsb-arkiver eller rå `.tar`-filer. Et originalt arkiv skal først skæres til og konverteres til kontrakten ovenfor. En ZIP- eller tar-fil kan ikke blot vælges i importfeltet.
 
@@ -71,3 +71,7 @@ Adapteren følger dokumentationens `path.type = MultiLineString`. `path.coordina
 De sparsomme `path_gs`/andre hastighedsserier har egne tidspunkter og må ikke zippes direkte sammen med positionerne. Matcheren udleder bevægelsen fra positionspunkterne.
 
 Trykhøjde er **ikke** præcis geometrisk højde. Denne forskel korrigeres ikke meteorologisk i version 0.1.0 og vises som et forbehold. API-kilden er angivet som adsb.aero/adsb.lol med ODbL 1.0. Kontrollér gældende kildevilkår før videre distribution.
+
+## Global API-hentning
+
+`trajectory_intersects` indeholder kun `time_from` og `time_to`, ingen `geometry`. Der hentes sider via samme forespørgsel og `cursor`, med `start_from` to døgn før tidsvinduet. En enkelt side bruger limit 100. Højst 200 sider, 20.000 unikke fly eller 1.000.000 tidsrelevante punkter beholdes. `retrieval` gemmer faktiske sider, rå flyantal, udeladte ruter, tidsgrænser og om API-hentningen blev fuldført. Lokal import har ingen garanti for global dækning.

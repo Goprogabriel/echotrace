@@ -1,14 +1,14 @@
 import { dopplerFactor, ecef, prepareFlight } from './physics.js';
 import { haversine, offsetPosition } from './math.js';
-function fitTrack(track, flight, receiver, config, offset, keepCurve = false) {
-    const stride = Math.max(1, Math.floor(track.points.length / 56));
+export function fitTrack(track, flight, receiver, config, offset, keepCurve = false, samples = 56) {
+    const stride = Math.max(1, Math.floor(track.points.length / samples));
     let xy = 0, xx = 0, sumw = 0, sumy = 0;
     const values = [];
     let attempted = 0;
     for (let i = 0; i < track.points.length; i += stride) {
         const p = track.points[i];
         attempted++;
-        const factor = dopplerFactor(flight, receiver, config.startTime + p.t + offset, config.soundSpeed);
+        const factor = dopplerFactor(flight, receiver, config.startTime + p.t + offset, config.soundSpeed, config.global ? 120_000 : Infinity);
         if (factor === null)
             continue;
         const w = Math.min(3, Math.max(.5, p.snr / 15));
@@ -18,7 +18,7 @@ function fitTrack(track, flight, receiver, config, offset, keepCurve = false) {
         sumy += w * p.hz;
         values.push({ t: p.t, hz: p.hz, factor, w });
     }
-    if (values.length < 25 || values.length / attempted < .85 || !xx)
+    if (values.length < Math.min(25, Math.ceil(samples * .7)) || values.length / attempted < .85 || !xx)
         return null;
     const sourceHz = xy / xx, mean = sumy / sumw;
     let residual = 0, baseline = 0;
@@ -45,7 +45,7 @@ export function matchFlights(tracks, flights, config, progress = () => { }) {
         throw new Error('Brug højst 100 flybaner ad gangen.');
     if (![config.lat, config.lon, config.radiusKm, config.startTime, config.clockUncertainty, config.receiverAltitudeM, config.soundSpeed].every(Number.isFinite))
         throw new Error('Ugyldige søgeparametre.');
-    if (Math.abs(config.lat) > 80 || Math.abs(config.lon) > 180 || config.radiusKm < 1 || config.radiusKm > 50 || config.clockUncertainty < 0 || config.clockUncertainty > 60 || config.soundSpeed < 300 || config.soundSpeed > 370 || Math.abs(config.receiverAltitudeM) > 9000)
+    if (Math.abs(config.lat) > 90 || Math.abs(config.lon) > 180 || config.radiusKm < 1 || config.radiusKm > 50 || config.clockUncertainty < 0 || config.clockUncertainty > 60 || config.soundSpeed < 300 || config.soundSpeed > 370 || Math.abs(config.receiverAltitudeM) > 9000)
         throw new Error('Søgeparametrene ligger uden for modellens grænser.');
     const prepared = flights.map(prepareFlight), selected = tracks;
     const offsets = config.clockUncertainty ? [-1, -.5, 0, .5, 1].map(v => v * config.clockUncertainty) : [0];

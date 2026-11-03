@@ -33,7 +33,7 @@ export function interpolate(f: PreparedFlight, t: number): {position: Vec3; velo
  * Solve t_receive = t_emit + |source(t_emit)-receiver| / c.
  * Positive radial velocity is receding: f_observed/f_source = c/(c+v_radial).
  */
-export function dopplerFactor(f: PreparedFlight, receiver: Vec3, receivedAt: number, c: number): number | null {
+export function dopplerFactor(f: PreparedFlight, receiver: Vec3, receivedAt: number, c: number, maxRangeM = Infinity): number | null {
   if (!(c >= 300 && c <= 370)) return null;
   let te = Math.min(f.times[f.times.length - 1], Math.max(f.times[0], receivedAt - 20));
   let factor = 1;
@@ -45,7 +45,7 @@ export function dopplerFactor(f: PreparedFlight, receiver: Vec3, receivedAt: num
     if (Math.abs(radial) > c * .98) return null;
     factor = c / (c + radial);
     const residual = te + range / c - receivedAt;
-    if (Math.abs(residual) < .002) return factor;
+    if (Math.abs(residual) < .002) return range <= maxRangeM ? factor : null;
     te -= residual * factor;
     if (te < f.times[0] || te > f.times[f.times.length - 1]) return null;
   }

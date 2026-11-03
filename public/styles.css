@@ -53,3 +53,7 @@ body{background-image:radial-gradient(ellipse at 90% 0,#26387924,transparent 45%
 @media(max-width:650px){.hero{grid-template-columns:1fr;gap:35px}.spectrum-hero{padding:12px}.spectrum-hero canvas{height:190px}}
 
 .search-map:has(input[data-map="tiles"]:not(:checked)) .geo-canvas,.result-map:has(input[data-map="tiles"]:not(:checked)) .geo-canvas{filter:invert(1) hue-rotate(180deg)}
+
+.search-coverage{padding:17px 20px;border:1px solid var(--line);background:var(--panel);border-radius:10px;margin-bottom:22px;font-size:13px}
+.search-coverage strong{display:block;font-weight:550;margin-bottom:7px;color:var(--text)}
+.search-coverage p{font-size:12px;line-height:1.8}.search-coverage p+p{margin-top:4px}

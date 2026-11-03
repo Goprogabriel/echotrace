@@ -59,23 +59,8 @@ function initLab(): void {
   if(isBusy(state))root.querySelectorAll<HTMLInputElement|HTMLSelectElement|HTMLButtonElement>('#signal-controls input,#signal-controls select,#signal-controls button').forEach(el=>el.disabled=true);
   if(state.result&&state.config&&state.dataset){
     const map=root.querySelector<HTMLElement>('#result-map');
-    if(map)cleanups.push(mountMap(map,{config:state.config,flights:state.dataset.flights,candidates:state.result.candidates,grid:state.result.grid,selected:state.selected,onSelect:i=>{state.selected=i;render();}}));
-  }
-  const searchMap=root.querySelector<HTMLElement>('#search-map');
-  if(searchMap){
-    let dispose=()=>{};
-    const syncMap=()=>{
-      dispose();
-      const latitude=Number(state.form.lat),longitude=Number(state.form.lon);
-      const config:SearchConfig={lat:state.form.lat&&Number.isFinite(latitude)?Math.max(-80,Math.min(80,latitude)):55.6761,lon:state.form.lon&&Number.isFinite(longitude)?Math.max(-180,Math.min(180,longitude)):12.5683,radiusKm:Number(state.form.radius)||10,startTime:0,clockUncertainty:0,receiverAltitudeM:0,soundSpeed:343};
-      dispose=mountMap(searchMap,{config,flights:[],candidates:[],grid:[],selected:0,onSelect:()=>{},onPick:(lat,lon)=>{
-        state.form.lat=lat.toFixed(6);state.form.lon=lon.toFixed(6);
-        for(const name of ['lat','lon']){const input=root.querySelector<HTMLInputElement>(`input[name="${name}"]`);if(input)input.value=state.form[name];}
-      }});
-    };
-    const form=root.querySelector<HTMLFormElement>('#search-form')!;
-    form.addEventListener('change',e=>{if(['lat','lon','radius'].includes((e.target as HTMLInputElement).name))syncMap();});
-    syncMap();cleanups.push(()=>dispose());
+    const matchedIds=new Set(state.result.candidates.flatMap(c=>c.matches.map(m=>m.flightId)));
+    if(map)cleanups.push(mountMap(map,{config:state.config,flights:state.dataset.flights.filter(f=>matchedIds.has(f.id)),candidates:state.result.candidates,grid:state.result.grid,selected:state.selected,onSelect:i=>{state.selected=i;render();}}));
   }
   root.querySelector('#search-form')?.addEventListener('submit',e=>{e.preventDefault();void runMatching();});
   if(isBusy(state))root.querySelectorAll<HTMLInputElement|HTMLSelectElement|HTMLButtonElement>('#search-form input,#search-form select,#search-form button').forEach(el=>el.disabled=true);
@@ -109,8 +94,8 @@ async function analyzeFile(file: File, demo?: DemoSetup, capture=false): Promise
       pcm=null;
       if(state.blobUrl)URL.revokeObjectURL(state.blobUrl);
       state=initialState();state.file=file;state.blobUrl=URL.createObjectURL(file);
-      if(demo){state.demo=true;state.dataset=demo.dataset;state.config=demo.config;state.consent=true;
-        const c=demo.config;state.form={date:new Date(c.startTime*1000).toISOString().slice(0,19),lat:String(c.lat),lon:String(c.lon),radius:String(c.radiusKm),clock:String(c.clockUncertainty),altitude:String(c.receiverAltitudeM),sound:String(c.soundSpeed)};}
+      if(demo){state.demo=true;state.dataset=demo.dataset;state.config={...demo.config,global:true};state.consent=true;
+        const c=demo.config;state.form={date:new Date(c.startTime*1000).toISOString().slice(0,19),clock:String(c.clockUncertainty),altitude:String(c.receiverAltitudeM),sound:String(c.soundSpeed)};}
     }
     state.stage='decoding';state.error='';state.canFallback=false;state.progress={phase:'decode',text:'Åbner din optagelse lokalt',progress:.01};navigateLab();render();
     const decoded=await(capture?captureMedia(file,updateProgress,controller.signal):decodeMedia(file,updateProgress,controller.signal));
@@ -143,11 +128,11 @@ function runSignalWorker(decoded: DecodedAudio, id: number): void {
 }
 function getConfig(): SearchConfig {
   const f=state.form;
-  if(!f.date||!f.lat.trim()||!f.lon.trim())throw new Error('Angiv optagelsens starttid i UTC og centrum for søgeområdet.');
+  if(!f.date)throw new Error('Angiv optagelsens starttid i UTC.');
   const date=Date.parse(`${f.date}Z`)/1000;
   if(!Number.isFinite(date)||date<946684800||date>4133980800)throw new Error('Angiv en gyldig optagelsestid mellem år 2000 og 2100.');
-  const config={lat:Number(f.lat),lon:Number(f.lon),radiusKm:Number(f.radius),startTime:date,clockUncertainty:Number(f.clock),receiverAltitudeM:Number(f.altitude),soundSpeed:Number(f.sound)};
-  if(!Object.values(config).every(Number.isFinite)||Math.abs(config.lat)>80||Math.abs(config.lon)>180||config.radiusKm<1||config.radiusKm>50||config.clockUncertainty<0||config.clockUncertainty>60||config.receiverAltitudeM< -400||config.receiverAltitudeM>9000||config.soundSpeed<300||config.soundSpeed>370)throw new Error('Kontrollér koordinater, radius (1–50 km), urusikkerhed, mikrofonhøjde og lydhastighed.');
+  const config:SearchConfig={global:true,lat:0,lon:0,radiusKm:50,startTime:date,clockUncertainty:Number(f.clock),receiverAltitudeM:Number(f.altitude),soundSpeed:Number(f.sound)};
+  if(!Object.values(config).every(v=>typeof v==='boolean'||Number.isFinite(v))||config.clockUncertainty<0||config.clockUncertainty>60||config.receiverAltitudeM< -400||config.receiverAltitudeM>9000||config.soundSpeed<300||config.soundSpeed>370)throw new Error('Kontrollér tidspunkt, urusikkerhed, mikrofonhøjde og lydhastighed.');
   return config;
 }
 async function runMatching(): Promise<void> {
@@ -158,10 +143,12 @@ async function runMatching(): Promise<void> {
     if(!tracks.length||tracks.length>3)throw new Error('Vælg mellem ét og tre tonale spor til søgningen.');
     if(!state.consent)throw new Error('Bekræft, at du har ret til at undersøge denne optagelse.');
     const config=getConfig();state.config=config;state.error='';state.result=null;state.selected=0;
+    const previous=state.dataset?.retrieval;
+    if(previous&&(previous.from!==config.startTime-config.clockUncertainty-450||previous.to!==config.startTime+state.analysis.duration+config.clockUncertainty+60))state.dataset=null;
     if(!state.dataset){
       if(!state.network)throw new Error('Tillad forespørgslen til flytjenesten, eller importér lokale flydata. Din video bliver på enheden.');
-      state.stage='fetching';state.progress={phase:'fetching',text:'Kontrollerer arkiv og henter historiske flybaner',progress:.02};render();
-      const dataset=await fetchFlights(config,state.analysis.duration,controller.signal);if(id!==job)return;state.dataset=dataset;
+      state.stage='fetching';state.progress={phase:'fetching',text:'Henter flybaner verden over ved dit tidspunkt',progress:.02};render();
+      const dataset=await fetchFlights(config,state.analysis.duration,controller.signal,(pages,flights)=>{if(id===job)updateProgress({phase:'fetching',text:`Henter globale flydata · ${pages} sider · ${flights.toLocaleString('da-DK')} flybaner`,progress:.02});});if(id!==job)return;state.dataset=dataset;
     }
     state.stage='matching';state.progress={phase:'matching',text:`Sammenligner ${tracks.length} spor med ${state.dataset.flights.length} flybaner`,progress:.02};render();
     root.querySelector('.processing-panel')?.scrollIntoView({behavior:'smooth',block:'center'});
@@ -189,11 +176,11 @@ async function loadDemo(): Promise<void> {
 }
 function exportReport():void{
   if(!state.result||!state.config||!state.analysis)return;
-  const report={schema:'echotrace-report/1',engineVersion:'0.1.0',exportedAt:new Date().toISOString(),synthetic:state.demo||state.dataset?.synthetic,
+  const report={schema:'echotrace-report/2',engineVersion:'0.1.0',exportedAt:new Date().toISOString(),synthetic:state.demo||state.dataset?.synthetic,
     disclaimer:'Experimental hypotheses, not verified locations. Scores are frequency errors, not probabilities. No calibrated position accuracy. Do not identify a person from this report.',
-    file:{name:state.file?.name,size:state.file?.size,type:state.file?.type},decoding:state.decoded,search:state.config,
+    file:{name:state.file?.name,size:state.file?.size,type:state.file?.type},decoding:state.decoded,search:{mode:'global',startTime:state.config.startTime,clockUncertainty:state.config.clockUncertainty,receiverAltitudeM:state.config.receiverAltitudeM,soundSpeed:state.config.soundSpeed},
     signal:{duration:state.analysis.duration,sampleRate:state.analysis.sampleRate,fftSize:state.analysis.fftSize,hopSize:state.analysis.hopSize,minHz:state.analysis.minHz,maxHz:state.analysis.maxHz,tracks:state.analysis.tracks,selectedTracks:state.selectedTracks,warnings:state.analysis.warnings},
-    data:{source:state.dataset?.source,license:state.dataset?.license,fetchedAt:state.dataset?.fetchedAt,flightCount:state.dataset?.flights.length,warnings:state.dataset?.warnings},result:state.result};
+    data:{source:state.dataset?.source,license:state.dataset?.license,fetchedAt:state.dataset?.fetchedAt,flightCount:state.dataset?.flights.length,retrieval:state.dataset?.retrieval,warnings:state.dataset?.warnings},result:state.result};
   const url=URL.createObjectURL(new Blob([JSON.stringify(report,null,2)],{type:'application/json'}));
   const a=document.createElement('a');a.href=url;a.download=`echotrace-${new Date().toISOString().slice(0,10)}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   toast('Rapporten indeholder tid og kandidatområder. Del den med omtanke.');
@@ -231,7 +218,7 @@ function signalAction(action:string):void {
   }catch(error){toast(error instanceof Error?error.message:'Kontrollér lydindstillingerne.');}
 }
 root.addEventListener('click',e=>{
-  const target=(e.target as Element).closest<HTMLElement>('[data-action],[data-scroll],[data-preset],[data-candidate],[data-track-zoom],[data-track-delete]');if(!target)return;
+  const target=(e.target as Element).closest<HTMLElement>('[data-action],[data-scroll],[data-candidate],[data-track-zoom],[data-track-delete]');if(!target)return;
   if(target.hasAttribute('disabled'))return;
   if(target.closest('#signal-controls')){
     if(isBusy(state))return;
@@ -247,7 +234,7 @@ root.addEventListener('click',e=>{
     const go=()=>root.querySelector(`#${target.dataset.scroll}`)?.scrollIntoView({behavior:'smooth'});
     if(route()!=='#/'){location.hash='/';setTimeout(go,20);}else go();return;
   }
-  if(target.dataset.preset){const presets:Record<string,[number,number]>={cph:[55.6761,12.5683],aar:[56.1629,10.2039],ber:[52.52,13.405]};const p=presets[target.dataset.preset];state.form.lat=String(p[0]);state.form.lon=String(p[1]);for(const name of ['lat','lon']){const el=root.querySelector<HTMLInputElement>(`input[name="${name}"]`);if(el)el.value=state.form[name];}root.querySelector('input[name="lon"]')?.dispatchEvent(new Event('change',{bubbles:true}));return;}
+
   if(target.dataset.candidate!==undefined){state.selected=Number(target.dataset.candidate);render();return;}
   switch(target.dataset.action){
     case 'upload':fileInput.value='';fileInput.click();break;

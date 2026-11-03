@@ -1,5 +1,6 @@
 import { analyzeSignal } from '../core/signal.js';
 import { matchFlights } from '../core/matcher.js';
+import { matchGlobalFlights } from '../core/global-search.js';
 const scope = self;
 scope.onmessage = (event) => {
     try {
@@ -9,7 +10,7 @@ scope.onmessage = (event) => {
             scope.postMessage({ type: 'analysis', data: result }, [result.db.buffer, result.waveform.buffer]);
         }
         else if (event.data.type === 'match') {
-            const result = matchFlights(event.data.tracks, event.data.flights, event.data.config, progress);
+            const result = (event.data.config.global ? matchGlobalFlights : matchFlights)(event.data.tracks, event.data.flights, event.data.config, progress);
             scope.postMessage({ type: 'result', data: result });
         }
     }

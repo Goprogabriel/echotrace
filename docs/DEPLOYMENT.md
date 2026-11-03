@@ -45,9 +45,9 @@ Fjern eller modificér ikke CSP ved deploy bare for at få en tilfældig tredjep
 
 1. Åbn hjemmesiden over HTTPS og kør demoen. Den skal finde to tonale spor og vise en tydeligt syntetisk resultatside.
 2. Kontrollér i browserens netværksfane, at en egen video ikke uploades.
-3. Åbn en understøttet lokal fil, indtast kendt UTC-tid/område, og prøv lokale flydata.
-4. Test særskilt et frivilligt live flykald for en dato, tjenesten aktuelt dækker. Se CORS, HTTP-status og format. Live-endpointet kunne ikke testes fra leveringsmiljøet.
-5. Kontrollér, at kortfliser og OSM-attribution er synlige i både søgeområde og resultater. Test zoom, valg af centrum og muligheden for at slå baggrundskort fra.
+3. Åbn en understøttet lokal fil, indtast kendt UTC-starttid uden sted, og prøv lokale flydata.
+4. Test særskilt et frivilligt live flykald for en dato, tjenesten aktuelt dækker. Se CORS, HTTP-status og format. Et lille livekald og CORS er verificeret; en fuld global hentning skal testes særskilt under realistisk belastning.
+5. Kontrollér, at kortfliser og OSM-attribution er synlige i resultater. Test zoom og visning af alle kandidater og muligheden for at slå baggrundskort fra.
 6. Test på dine måltelefoner, særligt iOS Safari, med realistiske kliplængder og hukommelsesforbrug.
 
 Et livekald, der fejler, er ikke grund til at sende videoen til en anden tjeneste eller falde tilbage til opdigtede resultater. Lokal import er den tilsigtede fallback.

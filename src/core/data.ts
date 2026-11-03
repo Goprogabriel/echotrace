@@ -26,7 +26,7 @@ function normalize(points: FlightPoint[]): FlightPoint[] {
 }
 export function parseDataset(input: unknown, source = 'Importeret lokalt datasæt'): FlightDataset {
   const root = object(input);
-  if (!Array.isArray(root.flights) || !root.flights.length || root.flights.length > 100) throw new Error('Datasættet skal indeholde 1–100 fly i feltet flights.');
+  if (!Array.isArray(root.flights) || !root.flights.length || root.flights.length > 20_000) throw new Error('Datasættet skal indeholde 1–20.000 fly i feltet flights.');
   let count = 0;
   const flights = root.flights.map((value: unknown, i: number): Flight => {
     const f = object(value);
@@ -43,12 +43,13 @@ export function parseDataset(input: unknown, source = 'Importeret lokalt datasæ
     synthetic: root.synthetic === true, warnings: ['Importerede data er ikke uafhængigt kontrolleret. Højder forventes i meter over middelvandstand.']};
 }
 /** Parses documented adsb.aero MultiLineStrings. Sparse speed arrays must NOT be zipped with positions. */
-export function parseProvider(input: unknown, from: number, to: number): FlightDataset {
+export function parseProvider(input: unknown, from: number, to: number, paged = false): FlightDataset {
   const root = object(input);
   if (!Array.isArray(root.flights)) throw new Error('Flytjenesten returnerede et ukendt format. Prøv lokal import.');
   const flights: Flight[] = []; let omitted = 0;
   for (const value of root.flights) {
     const f = object(value);
+    if (typeof f.flight_id !== 'string' || !f.flight_id.trim()) {omitted++; continue;}
     if (!f.path || !Array.isArray(f.timestamps)) { omitted++; continue; }
     const path = object(f.path);
     if (path.type !== 'MultiLineString' || !Array.isArray(path.coordinates)) { omitted++; continue; }
@@ -71,9 +72,9 @@ export function parseProvider(input: unknown, from: number, to: number): FlightD
     else omitted++;
   }
   const warnings = ['Kildehøjder er trykhøjder omregnet fra fod til meter, ikke præcise geometriske højder. Det kan forskyde løsningen.'];
-  if (root.cursor) warnings.push('API-svaret er afkortet. Flere fly kan findes; indsnævr søgeområdet eller importér et komplet udsnit.');
+  if (root.cursor && !paged) warnings.push('API-svaret er afkortet. Flere fly kan findes; indsnævr søgeområdet eller importér et komplet udsnit.');
   if (omitted) warnings.push(`${omitted} ruter uden tilstrækkelige punkter i tidsvinduet blev udeladt.`);
-  return {flights: flights.slice(0, 100), source: 'adsb.aero / adsb.lol', license: 'ODbL 1.0', synthetic: false,
+  return {flights: paged ? flights : flights.slice(0, 100), source: 'adsb.aero / adsb.lol', license: 'ODbL 1.0', synthetic: false,
     warnings, fetchedAt: new Date().toISOString()};
 }
 async function apiRequest(path: string, options: RequestInit, signal?: AbortSignal): Promise<unknown> {
@@ -99,20 +100,62 @@ export async function fetchCoverage(signal?: AbortSignal): Promise<Coverage> {
   return {first: r.first_date, last: r.last_date};
 }
 export function buildQuery(config: SearchConfig, duration: number): Record<string, unknown> {
-  const from = config.startTime - config.clockUncertainty - 360;
+  const from = config.startTime - config.clockUncertainty - (config.global ? 420 : 360);
   const to = config.startTime + duration + config.clockUncertainty + 30;
-  return {match: {trajectory_intersects: {geometry: {type: 'Circle', coordinates: [config.lon, config.lat], radius: config.radiusKm * 1000 + 60000},
-    time_from: new Date(from * 1000).toISOString(), time_to: new Date(to * 1000).toISOString()}},
-    end_date: new Date((to + 60) * 1000).toISOString(), window_days: 2, limit: 100, include_path: true};
+  const predicate: Record<string, unknown> = {time_from: new Date(from * 1000).toISOString(), time_to: new Date(to * 1000).toISOString()};
+  if (!config.global) predicate.geometry = {type: 'Circle', coordinates: [config.lon, config.lat], radius: config.radiusKm * 1000 + 60000};
+  // end_date bounds departure, not position time. Include up to two-day-old departures.
+  return {match: {trajectory_intersects: predicate},
+    end_date: new Date((to + 60) * 1000).toISOString(),
+    start_from: new Date((from - 2 * 86400) * 1000).toISOString(),
+    window_days: config.global ? 3 : 2, limit: 100, include_path: true};
 }
-export async function fetchFlights(config: SearchConfig, duration: number, signal?: AbortSignal): Promise<FlightDataset> {
+export async function fetchFlights(config: SearchConfig, duration: number, signal?: AbortSignal, progress?: (pages: number, flights: number) => void): Promise<FlightDataset> {
   const coverage = await fetchCoverage(signal);
   const day = new Date(config.startTime * 1000).toISOString().slice(0, 10);
   if (day < coverage.first.slice(0, 10) || day > coverage.last.slice(0, 10)) throw new Error(`Datoen ligger uden for tjenestens arkiv (${coverage.first.slice(0, 10)} → ${coverage.last.slice(0, 10)}). Importér historiske data i stedet.`);
-  const raw = await apiRequest('/query', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(buildQuery(config, duration))}, signal);
-  const result = parseProvider(raw, config.startTime - config.clockUncertainty - 390, config.startTime + duration + config.clockUncertainty + 60);
-  if (!result.flights.length) throw new Error('Ingen brugbare flybaner i dette tidsrum og område. Der vises ikke et opdigtet match.');
-  return result;
+  const query = buildQuery(config, duration);
+  const from = config.startTime - config.clockUncertainty - (config.global ? 450 : 390), to = config.startTime + duration + config.clockUncertainty + 60;
+  if (!config.global) {
+    const raw = await apiRequest('/query', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(query)}, signal);
+    const result = parseProvider(raw, from, to);
+    if (!result.flights.length) throw new Error('Ingen brugbare flybaner i dette tidsrum. Prøv lokal import.');
+    return result;
+  }
+  const flights = new Map<string, Flight>();
+  let cursor: unknown = null, pages = 0, points = 0, rawFlights = 0, omitted = 0, reason: string | undefined;
+  const seenCursors = new Set<string>();
+  const warnings = new Set<string>();
+  do {
+    if (signal?.aborted) throw new DOMException('Annulleret', 'AbortError');
+    const raw = object(await apiRequest('/query', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({...query, ...(cursor ? {cursor} : {})})}, signal));
+    pages++;
+    const parsed = parseProvider(raw, from, to, true);
+    const count = Array.isArray(raw.flights) ? raw.flights.length : 0;
+    rawFlights += count; omitted += Math.max(0, count - parsed.flights.length);
+    parsed.warnings.forEach(w => {if (!w.includes('ruter uden')) warnings.add(w);});
+    for (const flight of parsed.flights) {
+      if (flights.has(flight.id)) continue;
+      if (points + flight.points.length > 1_000_000 || flights.size >= 20_000) {reason = 'Browserens datagrænse blev nået (20.000 flybaner / 1.000.000 punkter).'; break;}
+      points += flight.points.length; flights.set(flight.id, flight);
+    }
+    cursor = raw.cursor || null;
+    if (reason) break;
+    if (cursor) {
+      const key = JSON.stringify(cursor);
+      if (seenCursors.has(key)) throw new Error('Flytjenesten gentog sin næste side. Søgningen blev stoppet for at undgå en uendelig hentning.');
+      seenCursors.add(key);
+    }
+    progress?.(pages, flights.size);
+    if (cursor && pages >= 200) {reason = 'Hentningen blev begrænset til 200 sider for at skåne den gratis flytjeneste.'; break;}
+  } while (cursor);
+  if (!flights.size) throw new Error('Ingen brugbare flybaner ved tidspunktet i arkivet. Dækning kan mangle; prøv lokal import.');
+  if (omitted) warnings.add(`${omitted} ruter manglede tilstrækkelige positioner i tidsvinduet.`);
+  if (reason) warnings.add(reason);
+  warnings.add('Tidsudsnittet medtager afgange op til to døgn før optagelsen. Ældre afgange og fly uden arkivdata kan mangle.');
+  warnings.add('Global hentning betyder arkivets tilgængelige flybaner, ikke alle faktiske fly. Dækningen er ujævn.');
+  return {flights: [...flights.values()], source: 'adsb.aero / adsb.lol · globalt tidsudsnit', license: 'ODbL 1.0', synthetic: false, fetchedAt: new Date().toISOString(), warnings: [...warnings],
+    retrieval: {global: true, complete: !cursor && !reason, pages, from, to, rawFlights, omitted, reason}};
 }
 export function parseCsv(text: string): FlightDataset {
   const rows: string[][] = []; let row: string[] = [], value = '', quoted = false;

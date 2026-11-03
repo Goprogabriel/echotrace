@@ -39,13 +39,13 @@ f_modtaget = f_kilde × c / (c + v_radial(t_udsendt))
 
 Udsendelsestiden løses iterativt. Det undgår fejlen at sammenligne en hørt tone med flyets samtidige, men for sene, registrerede position. Atmosfærisk brydning, vindfelt, multipath/refleksioner, ændrede motoromdrejninger og bevægende kamera er ikke modelleret.
 
-## 5. Afgrænset søgning
+## 5. Global kandidatsøgning
 
-Brugeren angiver et område og en UTC-starttid. UI tilbyder radius op til 50 km og urusikkerhed op til ±60 sekunder. Der er ikke en global geografisk søgning eller søgning efter en ukendt dato.
+Brugeren angiver alene UTC-starttiden. Flybaner hentes globalt i tidsvinduet. Den stejleste vedvarende frekvenssænkning i det tydeligst faldende spor bruges som startgæt på passagetid. Områder omkring hver flybanes jordprojektion undersøges i afstande fra 2,5 til 250 km med tættere punkter ved nære overflyvninger. Den endelige tilpasning løser lydforsinkelsen og bruger højst 120 km lydafstand. Op til 64 adskilte områder rangeres og undersøges derefter mere præcist med alle valgte spor. Urusikkerhed kan justeres op til ±60 sekunder. Der søges ikke efter en ukendt dato.
 
 For hvert geografisk gridpunkt og hver diskret urjustering beregnes den forventede Dopplerfaktor. En konstant kildetone tilpasses ved vægtede mindste kvadrater. Hvert udvalgt lydspor matches mod den bedst passende flybane. Samme fly kan i princippet forklare flere spor; antal separate fly-ID’er rapporteres særskilt.
 
-Først afsøges et 17×17 grid afgrænset til en cirkel. Op til fire adskilte kandidater raffineres i to efterfølgende grids. Dette er en heuristisk coarse-to-fine-søgning, ikke et bevis på et globalt optimum.
+Inden for hvert valgt område afsøges et 17×17 grid i en cirkel på 50 km. Højst 100 nærliggende flybaner bruges pr. område. Op til fire adskilte kandidater raffineres i to efterfølgende grids. Dette er en heuristisk coarse-to-fine-søgning, ikke et bevis på et globalt optimum.
 
 ## 6. Fejlmål og kandidatgrænser
 
@@ -70,6 +70,6 @@ Primær kilde: [I discovered a sound that leaks your exact location (and it’s 
 - **8:28–12:55:** En idealiseret Dopplertilpasning giver intervaller for hastighed og CPA-afstand. De bruges til kandidatudvælgelse sammen med tidsafstand og et forsigtigt stilhedsfilter. Manglende automatisk detektion i Echotrace bruges ikke som bevis for stilhed.
 - **13:49–20:57:** Faktiske ændringer i flyenes retning, hastighed og højde indgår i modellen. Udsendelsestiden løses før Dopplerberegningen. To events deler samme tidsforskydning; hvert event må ikke flyttes frit for at få et match. Echotraces matcher bevarer dette fælles ur og de oprindelige lydtider, også for separate passager.
 - **18:14–20:06:** Hans score summerer spektrogramstyrke langs modelkurven med søgning over kildetone og tidsfejl. Den nuværende Echotrace-version bruger stadig vægtet frekvensfejl mod automatiske eller manuelt optegnede linjer; den implementerer ikke hans spektrale brightness-score.
-- **22:53–24:29:** I en alternativ søgning bruges cirka ét minuts lyd med kendt tidspunkt og en manuelt optegnet kurve. Hans første eksempel havde kun kendt dag og to passager; præcist klokkeslæt er derfor ikke et generelt fysisk krav. Denne app kræver stadig en omtrentlig UTC-starttid og et afgrænset område.
+- **22:53–24:29:** I en alternativ søgning bruges cirka ét minuts lyd med kendt tidspunkt og en manuelt optegnet kurve. Hans første eksempel havde kun kendt dag og to passager; præcist klokkeslæt er derfor ikke et generelt fysisk krav. Denne app kræver UTC-starttiden og finder selv mulige områder gennem global kandidatsøgning.
 
-Denne opdatering forbedrer lydarbejdet og lokal kurvetilpasning. Automatisk terrænhøjde, typeklassifikation, CPA-baseret lands-/verdenssøgning, heldagssøgning, silence-filter og egen historisk datalagring er ikke implementeret. Flydataindlæsningen er bevaret til en efterfølgende opdatering. Lange klip kan bruge meget hukommelse under selve browserafkodningen, selv om spektrogrammets celleantal er begrænset.
+Denne opdatering forbedrer lydarbejdet og lokal kurvetilpasning. Automatisk terrænhøjde, typeklassifikation, udtømmende lands-/verdenssøgning, heldagssøgning, silence-filter og egen historisk datalagring er ikke implementeret. Flydataindlæsningen henter nu det globale tidsudsnit via tidsfilter og begrænset pagination. Lange klip kan bruge meget hukommelse under selve browserafkodningen, selv om spektrogrammets celleantal er begrænset.

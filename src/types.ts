@@ -20,7 +20,7 @@ export interface DecodedAudio {
 export interface FlightPoint { t: number; lat: number; lon: number; altM: number }
 export interface Flight { id: string; callsign: string; type?: string; points: FlightPoint[] }
 export interface SearchConfig {
-  lat: number; lon: number; radiusKm: number; startTime: number;
+  lat: number; lon: number; radiusKm: number; startTime: number; global?: boolean;
   clockUncertainty: number; receiverAltitudeM: number; soundSpeed: number;
 }
 export interface Match {
@@ -37,10 +37,12 @@ export interface GridCell {lat: number; lon: number; misfit: number}
 export interface FitResult {
   candidates: Candidate[]; grid: GridCell[]; cellM: number;
   tested: number; elapsedMs: number; warnings: string[];
+  search?: {mode: 'global'; flightsScanned: number; regionsRefined: number; maxDistanceKm: number; exhaustive: false};
 }
 export interface FlightDataset {
   flights: Flight[]; source: string; license: string; warnings: string[];
   synthetic: boolean; fetchedAt?: string;
+  retrieval?: {global: true; complete: boolean; pages: number; from: number; to: number; rawFlights: number; omitted: number; reason?: string};
 }
 export interface Progress { phase: string; text: string; progress: number }
 export type ProgressFn = (progress: Progress) => void;
