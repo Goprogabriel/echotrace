@@ -14,7 +14,7 @@
 
 Ingen installation, konto eller API-nøgle. **Din mediefil behandles lokalt i browseren.** Demoen bruger simulerede flydata og kører den rigtige analyse. Projektet er eksperimentelt; det er ikke en valideret metode til præcis lokalisering.
 
-Færdigbygget statisk hjemmeside + komplet TypeScript-kildekode. Lys og enkel dansk brugerflade, lokal videobehandling, spektrogram, eksperimentel sammenligning med flybaner og interaktive OpenStreetMap-kort.
+Færdigbygget statisk hjemmeside + komplet TypeScript-kildekode. Enkel dansk brugerflade med mørkt marineblåt tema og blå/lilla frekvensfarver, lokal videobehandling, spektrogram, eksperimentel sammenligning med flybaner og interaktive OpenStreetMap-kort.
 
 ## Start her — ingen npm-installation nødvendig
 
@@ -144,7 +144,7 @@ docs/                      Metode, datakontrakt, testresultater og deploy
 - [DEPLOYMENT.md](docs/DEPLOYMENT.md) — statisk publicering og sikkerhed.
 - [TEST-RESULTS.md](docs/TEST-RESULTS.md) — hvad der er testet, og hvad der ikke er.
 - [SOURCES.md](docs/SOURCES.md) — primære kilder.
-- `docs/previews/` — historiske skærmbilleder af det oprindelige mørke design. Se demoen for den aktuelle lyse brugerflade.
+- `docs/previews/` — historiske skærmbilleder af det oprindelige mørke design. Se demoen for det aktuelle marineblå design.
 
 ## Licenser
 

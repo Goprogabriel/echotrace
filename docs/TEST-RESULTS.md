@@ -83,3 +83,10 @@ Kør demoen over HTTPS, prøv en egen lille understøttet fil, kontrollér netv�
 - Forside og resultater blev visuelt kontrolleret ved desktop- og mobilbredde. Ingen horisontal overflow blev målt på de to visninger ved den kontrollerede mobilbredde (354 CSS-pixel).
 - Søgeformular og kort blev visuelt kontrolleret ved mobilbredde. Tekniske detaljer er samlet under “Detaljer og forbehold”.
 - Browserharnessens selectors er opdateret til de nye sidetitler; Python-harnessen blev ikke genkørt i denne opdatering.
+
+## Spektrograminspireret tema · 3. november 2026
+
+- Designet er bygget og testet isoleret fra øvrige igangværende ændringer. Alle 20 tests bestod.
+- Forside, demoresultat, OpenStreetMap, metode og privatliv blev visuelt kontrolleret i browser.
+- Privatlivssiden blev kontrolleret ved mobilbredde uden vandret overflow.
+- Diagrammernes farver er tilpasset via CSS; selve signaldataene er uændrede af denne designopdatering.
