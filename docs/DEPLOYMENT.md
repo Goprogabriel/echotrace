@@ -30,12 +30,12 @@ Ingen SharedArrayBuffer eller cross-origin isolation er påkrævet. Appen bruger
 
 ## Netværk og Content Security Policy
 
-Som standard hentes kun appens egne statiske filer. Ved valg af demo hentes syntetiske aktiver fra samme host. Ingen rå video uploades.
+Ud over appens egne statiske filer hentes OpenStreetMap-kortfliser, når et kort vises. Baggrundskort kan slås fra på kortet. Ved valg af demo hentes syntetiske aktiver fra samme host. Ingen rå video uploades.
 
 Tilladte valgfrie eksterne forbindelser:
 
 - `https://adsb.aero` under `connect-src` til flydata.
-- `https://tile.openstreetmap.org` under `img-src` til det brugeraktiverede baggrundskort.
+- `https://tile.openstreetmap.org` under `img-src` til baggrundskort, som er slået til som standard.
 
 CSP ligger også i `index.html` som meta-policy. `frame-ancestors` skal sættes som HTTP-header, ikke meta. Kamera, mikrofon og geolokation kan blokeres helt med Permissions-Policy; appen behøver dem ikke. Der er ingen formular-post eller upload-endpoint.
 
@@ -47,7 +47,7 @@ Fjern eller modificér ikke CSP ved deploy bare for at få en tilfældig tredjep
 2. Kontrollér i browserens netværksfane, at en egen video ikke uploades.
 3. Åbn en understøttet lokal fil, indtast kendt UTC-tid/område, og prøv lokale flydata.
 4. Test særskilt et frivilligt live flykald for en dato, tjenesten aktuelt dækker. Se CORS, HTTP-status og format. Live-endpointet kunne ikke testes fra leveringsmiljøet.
-5. Aktivér kortfliser og kontrollér, at OSM-attributionen er synlig. Lad dem være slået fra, når de ikke behøves.
+5. Kontrollér, at kortfliser og OSM-attribution er synlige i både søgeområde og resultater. Test zoom, valg af centrum og muligheden for at slå baggrundskort fra.
 6. Test på dine måltelefoner, særligt iOS Safari, med realistiske kliplængder og hukommelsesforbrug.
 
 Et livekald, der fejler, er ikke grund til at sende videoen til en anden tjeneste eller falde tilbage til opdigtede resultater. Lokal import er den tilsigtede fallback.

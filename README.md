@@ -60,10 +60,14 @@ Appen bruger relative filstier og hash-routing (`#/lab`, `#/method`, `#/privacy`
 - Indtastning af UTC-tid, geografisk søgeområde, urusikkerhed og mikrofonhøjde.
 - Adapter til adsb.aeros dokumenterede historiske API samt lokal JSON-, CSV- og gzip-import.
 - Resultater med koordinater, indtastet optagelsestid, urjustering, alternative kandidater, flybaner, modelfejl og forklaringer.
-- Lokalt geografisk koordinatkort som standard. OpenStreetMap-baggrund kan aktiveres særskilt.
+- Interaktive OpenStreetMap-kort i søgeområde og resultater. Klik for at vælge centrum, træk for at flytte, og zoom med +/−, to fingre eller Ctrl/Command + rul. Baggrundskort kan slås fra.
 - Eksport af JSON-rapport — ikke den rå mediefil.
 - En **tydeligt mærket syntetisk demovideo**, lydfil og to simulerede flybaner. Demoen kører den rigtige analyse; resultaterne er ikke hardkodet.
 - Startfiler til Windows/Mac/Linux, kildekode, tests, dokumentation og MIT-licens for koden.
+
+### Gratis kort uden API-nøgle
+
+Kortene bruger [OpenStreetMap](https://www.openstreetmap.org/) med synlig kildeangivelse og browserens normale caching. Kun synlige kortfliser hentes — ingen offline-download eller forudindlæsning. Der kræves ingen konto eller API-nøgle. Den fælles kortserver har begrænset kapacitet og ingen oppetidsgaranti; ved større trafik skal der vælges en passende kortserver i overensstemmelse med [OSM’s vilkår](https://operations.osmfoundation.org/policies/tiles/).
 
 ## Vigtig afgrænsning
 
@@ -89,7 +93,7 @@ Video-codecs varierer mellem browsere. MP4/MOV/WebM er containere, ikke garantie
 
 Mediefilen forbliver i browserhukommelsen. Ingen analytics, login, tredjepartsskrifttyper, kamera-/mikrofonadgang, automatisk geolokation eller database. Ingen `localStorage`/IndexedDB.
 
-Tillader du flyforespørgslen, modtager flytjenesten søgeområde, tidsinterval og almindelige forbindelsesoplysninger, herunder IP — **ikke** video, lyd eller beregnede resultater. Aktiverer du kortfliser, kan kortudbyderen se det viste kortudsnit. Hostens almindelige adgangslogs kan stadig registrere besøg på hjemmesiden. Det er ikke det samme som upload af dine medier.
+Tillader du flyforespørgslen, modtager flytjenesten søgeområde, tidsinterval og almindelige forbindelsesoplysninger, herunder IP — **ikke** video, lyd eller beregnede resultater. OpenStreetMap-kortfliser hentes som standard på kortvisningerne; kortudbyderen ser det viste kortudsnit og din IP. Baggrundskort kan slås fra. Hostens almindelige adgangslogs kan stadig registrere besøg på hjemmesiden. Det er ikke det samme som upload af dine medier.
 
 Brug kun egne optagelser eller materiale, du må undersøge. Eksporterede rapporter indeholder tid og mulige koordinater og bør behandles som følsomme.
 

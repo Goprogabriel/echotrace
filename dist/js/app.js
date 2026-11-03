@@ -69,6 +69,29 @@ function initLab() {
         if (map)
             cleanups.push(mountMap(map, { config: state.config, flights: state.dataset.flights, candidates: state.result.candidates, grid: state.result.grid, selected: state.selected, onSelect: i => { state.selected = i; render(); } }));
     }
+    const searchMap = root.querySelector('#search-map');
+    if (searchMap) {
+        let dispose = () => { };
+        const syncMap = () => {
+            dispose();
+            const latitude = Number(state.form.lat), longitude = Number(state.form.lon);
+            const config = { lat: state.form.lat && Number.isFinite(latitude) ? Math.max(-80, Math.min(80, latitude)) : 55.6761, lon: state.form.lon && Number.isFinite(longitude) ? Math.max(-180, Math.min(180, longitude)) : 12.5683, radiusKm: Number(state.form.radius) || 10, startTime: 0, clockUncertainty: 0, receiverAltitudeM: 0, soundSpeed: 343 };
+            dispose = mountMap(searchMap, { config, flights: [], candidates: [], grid: [], selected: 0, onSelect: () => { }, onPick: (lat, lon) => {
+                    state.form.lat = lat.toFixed(6);
+                    state.form.lon = lon.toFixed(6);
+                    for (const name of ['lat', 'lon']) {
+                        const input = root.querySelector(`input[name="${name}"]`);
+                        if (input)
+                            input.value = state.form[name];
+                    }
+                } });
+        };
+        const form = root.querySelector('#search-form');
+        form.addEventListener('change', e => { if (['lat', 'lon', 'radius'].includes(e.target.name))
+            syncMap(); });
+        syncMap();
+        cleanups.push(() => dispose());
+    }
     root.querySelector('#search-form')?.addEventListener('submit', e => { e.preventDefault(); void runMatching(); });
     if (isBusy(state))
         root.querySelectorAll('#search-form input,#search-form select,#search-form button').forEach(el => el.disabled = true);
@@ -302,6 +325,7 @@ root.addEventListener('click', e => {
             if (el)
                 el.value = state.form[name];
         }
+        root.querySelector('input[name="lon"]')?.dispatchEvent(new Event('change', { bubbles: true }));
         return;
     }
     if (target.dataset.candidate !== undefined) {

@@ -67,3 +67,11 @@ Netværk var afvist i harness, undtagen fixture-hentning fra de tre medfølgende
 ## Anbefalet accepttest på din egen host
 
 Kør demoen over HTTPS, prøv en egen lille understøttet fil, kontrollér netværksfanen, test lokal import, og verificér derefter flytjeneste og kortfliser separat. Brug virkelige samtykkebaserede kontroloptagelser før du tillægger lokationshypoteserne vægt.
+
+## Interaktive kort · opdatering 3. november 2026
+
+- `npm run check`: TypeScript, statisk build og alle 20 eksisterende tests bestod.
+- Lokal browserkontrol med produktions-CSP: syntetisk demo gennemfører, og resultatkortet viser OpenStreetMap som standard med synlig attribution.
+- Søgeområde: Aarhus-genvejen opdaterer koordinatfelter og kort; zoomknappen starter ikke formularens analyse. Klik på kortet samt piletast + Enter opdaterer koordinaterne.
+- Alle seks synlige kortfliser på det kontrollerede søgekort blev indlæst. Kortvisningen blev visuelt kontrolleret.
+- To-finger-zoom er implementeret med Pointer Events; fysisk multitouch på telefon er ikke testet i denne opdatering.
