@@ -88,7 +88,7 @@ test('Adaptive resolution finds a weak known falling tone without relaxing detec
   });
   assert.equal(analyzeSignal(pcm,8000).tracks.length,0);
   const a=analyzeSignalAdaptive(pcm,8000);
-  assert.equal(a.fftSize,16384);assert.deepEqual(a.resolutionAttempts,[8192,16384]);
+  assert.equal(a.fftSize,16384);assert.deepEqual(a.resolutionAttempts,[8192,16384,32768]);
   assert.equal(a.tracks.length,1);
   const points=a.tracks[0].points;
   assert(Math.sqrt(points.reduce((s,p)=>s+(p.hz-(150-.4*p.t))**2,0)/points.length)<.5);
@@ -112,10 +112,48 @@ test('The complete synthetic location also passes off-curve audio controls',asyn
   const {validateSpectralSupport}=await import('../dist/js/core/spectral-support.js');
   analysis??=analyzeSignal(wav(),8000);
   const result=matchFlights(analysis.tracks,dataset.flights,config);
-  validateSpectralSupport(result,analysis);
+  validateSpectralSupport(result,analysis,{tracks:analysis.tracks,flights:dataset.flights,config});
   assert.equal(result.candidates[0].accepted,true);
   assert.equal(result.candidates[0].audioEvidence,'supported');
+  assert(result.candidates[0].matches.every(m=>m.predicted.length>100&&m.spectralSupport.modelCoverage>.95));
   assert(result.candidates[0].matches.every(m=>m.spectralSupport.excessDb>3));
   assert.equal(result.audioValidation.calibrated,false);
   assert.equal(result.audioValidation.shiftsBins.length,6);
+});
+
+
+test('A strong detected passage does not hide a second weak passage at finer resolution',()=>{
+  let seed=1090,strong=0,weak=0;const sr=8000;
+  const pcm=Float32Array.from({length:sr*30},(_,i)=>{
+    seed=(1664525*seed+1013904223)>>>0;
+    strong+=2*Math.PI*(330-1.7*i/sr)/sr;
+    weak+=2*Math.PI*(150-.4*i/sr)/sr;
+    return(seed/4294967296-.5)*.05+.02*Math.sin(strong)+.001*Math.sin(weak);
+  });
+  const first=analyzeSignal(pcm,sr);assert.equal(first.tracks.length,1);
+  const a=analyzeSignalAdaptive(pcm,sr);assert.equal(a.tracks.length,2);
+  assert.equal(a.fftSize,16384);assert.deepEqual(a.resolutionAttempts,[8192,16384]);
+  assert(a.tracks.some(t=>Math.abs(t.points[0].hz-330)<5));
+  const recovered=a.tracks.find(t=>t.points[0].hz<200);assert(recovered);
+  assert(Math.sqrt(recovered.points.reduce((sum,p)=>sum+(p.hz-(150-.4*p.t))**2,0)/recovered.points.length)<.5);
+});
+
+test('Sparse bright audio clicks at the old validation points cannot stand in for a sustained passage',async()=>{
+  const {validateSpectralSupport}=await import('../dist/js/core/spectral-support.js');
+  analysis??=analyzeSignal(wav(),8000);
+  const result=matchFlights(analysis.tracks,dataset.flights,config);
+  const candidate=result.candidates[0];assert(candidate.accepted);
+  const sparseAudio={...analysis,db:new Float32Array(analysis.db.length).fill(-90)};
+  for(const match of candidate.matches)for(const p of match.predicted){
+    const frame=Math.round((p.t*analysis.sampleRate-analysis.fftSize/2)/analysis.hopSize);
+    const bin=Math.round((p.hz-analysis.minHz)*analysis.fftSize/analysis.sampleRate);
+    sparseAudio.db[frame*analysis.bins+bin]=-35;
+  }
+  const sparseResult={...result,candidates:[structuredClone(candidate)],warnings:[]};
+  validateSpectralSupport(sparseResult,sparseAudio);
+  assert.equal(sparseResult.candidates[0].accepted,true,'Old sparse sampling sees only the planted clicks');
+  const denseResult={...result,candidates:[structuredClone(candidate)],warnings:[]};
+  validateSpectralSupport(denseResult,sparseAudio,{tracks:analysis.tracks,flights:dataset.flights,config});
+  assert.equal(denseResult.candidates[0].accepted,false,'The full passage has no sustained tone');
+  assert(denseResult.candidates[0].matches.every(m=>m.spectralSupport.supportedFraction<.6));
 });

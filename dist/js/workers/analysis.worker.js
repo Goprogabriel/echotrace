@@ -12,9 +12,11 @@ scope.onmessage = (event) => {
             scope.postMessage({ type: 'analysis', data: result }, [result.db.buffer, result.waveform.buffer]);
         }
         else if (event.data.type === 'match') {
+            const started = performance.now();
             const result = (event.data.config.global ? matchGlobalFlights : matchFlights)(event.data.tracks, event.data.flights, event.data.config, progress);
             if (event.data.analysis)
-                validateSpectralSupport(result, event.data.analysis);
+                validateSpectralSupport(result, event.data.analysis, { flights: event.data.flights, tracks: event.data.tracks, config: event.data.config });
+            result.elapsedMs = performance.now() - started;
             scope.postMessage({ type: 'result', data: result });
         }
     }

@@ -56,12 +56,13 @@ Appen bruger relative filstier og hash-routing (`#/lab`, `#/method`, `#/privacy`
 
 - Enkel forside med filvalg, demo, en kort introduktion og svar på de vigtigste spørgsmål.
 - Lokal filvælger og drag-and-drop, original video-/lydafspiller og faktisk målt waveform/spektrogram.
+- Automatisk genforsøg med finere frekvensopløsning ved færre end to spor, så et kraftigt spor ikke alene stopper søgningen efter svagere spor.
 - Lydafkodning via browseren; FFT, tonale spor og fysisk kurvematch i Web Workers.
 - Indtastning af UTC-tid og automatisk global kandidatsøgning — ingen koordinater eller søgeradius. Urusikkerhed og mikrofonhøjde kan justeres under avancerede parametre.
 - Adapter til adsb.aeros dokumenterede historiske API med tilgængelige QNH-højderettelser samt lokal JSON-, CSV- og gzip-import. Originale readsb-traces og gemte API-svar kan importeres direkte, også flere filer sammen.
 - Resultater med koordinater, indtastet optagelsestid, urjustering, alternative kandidater, flybaner, modelfejl og forklaringer.
 - Interaktive OpenStreetMap-kort viser de beregnede mulige områder. Træk for at flytte, og zoom med +/−, to fingre eller Ctrl/Command + rul. Baggrundskort kan slås fra.
-- Cyan modelkurver på spektrogrammet, geografisk heatmap over relativ kurvefejl og spektral kontrast med seks forskudte kontrolkurver. En kandidat skal bestå både kurvetilpasning og lydkontrol.
+- Cyan modelkurver på spektrogrammet, geografisk heatmap over relativ kurvefejl og spektral kontrast målt over hele passagen med seks forskudte kontrolkurver og en tidsvendt kontrolkurve. En kandidat skal bestå både kurvetilpasning og lydkontrol.
 - Eksport af JSON-rapport — ikke den rå mediefil.
 - En **tydeligt mærket syntetisk demovideo**, lydfil og to simulerede flybaner. Demoen kører den rigtige analyse; resultaterne er ikke hardkodet.
 - Startfiler til Windows/Mac/Linux, kildekode, tests, dokumentation og MIT-licens for koden.

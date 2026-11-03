@@ -48,3 +48,23 @@ test('Insufficient or unequal control coverage cannot count as audio support',()
  assert.equal(compareSpectralControls(a,wideCurve.slice(0,8)).status,'insufficient');
  assert.equal(compareSpectralControls(a,[{t:1,hz:2}]),undefined);
 });
+
+
+test('A stationary tone fails temporal direction even when it beats nearby frequencies',()=>{
+ const a=wideFixture(), stationary=wideCurve.map(p=>({...p,hz:90}));
+ stationary.forEach((p,f)=>a.db[f*192+90]=-40);
+ const r=compareSpectralControls(a,stationary);
+ assert.equal(r.contrastDb,30);assert.equal(r.excessDb,30);
+ assert.equal(r.temporalExcessDb,0);assert.equal(r.status,'weak');
+});
+test('A tone in the opposite direction fails the model audio check',()=>{
+ const a=wideFixture();wideCurve.forEach((p,f)=>a.db[f*192+wideCurve[15-f].hz]=-40);
+ const r=compareSpectralControls(a,wideCurve);
+ assert(r.temporalExcessDb<0);assert.equal(r.status,'weak');
+});
+test('Repeated points in one STFT window do not count as independent measurements',()=>{
+ const a=wideFixture();a.db[90]=-40;
+ const same=Array.from({length:100},()=>({t:.5,hz:90}));
+ const r=compareSpectralControls(a,same);
+ assert.equal(r.samples,1);assert.equal(r.status,'insufficient');
+});

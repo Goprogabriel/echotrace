@@ -23,3 +23,6 @@ Kildekode, FFT, signalsporing, fysikmodel, UI, korttegning og demo er skrevet ti
 - readsb trace-format, relative sekunder, højdeenheder og leg/stale/height-flags: https://github.com/wiedehopf/readsb/blob/dev/README-json.md#trace-jsons
 
 De seneste parserændringer er kontrolleret med et lille live API-svar. Ingen påstand om adgang til Paras Chopras originale data eller kode.
+
+- SciPy ShortTimeFFT: vinduescentre, hop og frekvensbins, konsulteret som signalbehandlingsreference (ingen SciPy-runtime i appen): https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.ShortTimeFFT.html
+- SciPy peak prominence: lokal kontrast mod baggrund, konsulteret som begrebsreference (vores kontrastmål er ikke SciPys algoritme): https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.peak_prominences.html

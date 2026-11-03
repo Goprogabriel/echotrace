@@ -170,3 +170,17 @@ Den lokale app er kontrolleret i browseren med den medfølgende syntetiske video
 Knappen til at tegne, punkteditoren, ankre, tilhørende app-tilstand og funktionen til at konstruere manuelle spor er fjernet. Kun automatisk fundne spor kan vælges til søgningen. Zoom, genanalyse, sporvalg og afspilningsspoling er bevaret. Danske og engelske hjælpetekster samt metodebeskrivelsen er opdateret.
 
 `npm run check` består med 63 tests. Testen af den fjernede manuelle sporkonstruktion er fjernet sammen med funktionen.
+
+
+## Svage spor og kontrol af hele passagen · 3. november 2026
+
+`npm run check` består med 69 tests. Nyt benchmark indeholder 12 reproducerbare negative klip: tre seeds hver af hvid støj, farvet støj, stationære toner med støj og pulserende tonale lydudbrud med støj. Ingen giver Dopplerspor eller accepteret spektralt match mod testkurven. Det er syntetiske kontrolklip og ikke en måling af falske matches i virkelige videoer.
+
+Et 30-sekunders syntetisk klip med et kraftigt faldende spor og et svagt faldende spor giver ét spor ved 8.192 FFT-punkter og to ved 16.384. Det genfundne svage spor har frekvens-RMSE under 0,5 Hz mod den kendte testtone. Den kraftige tone bevares. De eksisterende tonefiltre er ikke sænket.
+
+Den samlede syntetiske demo består også den tættere fysiske kontrol med mere end 100 målevinduer pr. spor. Syntetiske klik anbragt netop ved den gamle sparsomme kontrols målepunkter bestod den sparsomme kontrol, men afvises, når hele passagen undersøges. En stationær tone, en tone i modsat tidsretning og gentagelser af samme målevindue kan heller ikke bestå de nye kontroller.
+
+Der mangler stadig uafhængige virkelige lydoptagelser med kendt UTC og modtagerplacering. De ekstra kontroller kan også afvise rigtige svage eller overlappende flypassager. Det er ikke en generel flylydsklassifikator og ikke en garanti for at finde enhver hørbar kilde.
+
+
+Browserkontrol af denne version: den syntetiske demo giver 493 målevinduer pr. spor med 100% lokal lydstøtte. Det særlige klip med kraftig og svag tone blev åbnet gennem browserens filvælger og gav to automatiske spor ved FFT 16.384. Danske og engelske hjælpetekster samt måleantal er kontrolleret.

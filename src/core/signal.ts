@@ -3,29 +3,36 @@ import type {ProgressFn, Ridge, RidgePoint, SignalAnalysis, SignalOptions} from 
 
 export const DEFAULT_SIGNAL_OPTIONS: SignalOptions = {fftSize: 8192, minHz: 30, maxHz: 1000};
 
-/** Try finer frequency resolution only when the initial automatic pass found nothing.
- * Manual reanalysis uses analyzeSignal directly and keeps the user's exact FFT choice.
- */
+/** Search finer resolutions for missing passages even after finding one strong tone.
+ * Keep the original result unless a finer pass adds tracks without losing old ones.
+ * User-triggered reanalysis still honours the selected resolution exactly. */
 export function analyzeSignalAdaptive(samples: Float32Array, sampleRate: number, progress: ProgressFn = () => {}, options: SignalOptions = DEFAULT_SIGNAL_OPTIONS): SignalAnalysis {
-  const initial = analyzeSignal(samples, sampleRate, progress, options);
-  initial.resolutionAttempts = [options.fftSize];
-  if (initial.tracks.length) return initial;
-  let last = initial;
+  let best = analyzeSignal(samples, sampleRate, progress, options);
   const attempts = [options.fftSize];
+  best.resolutionAttempts = [...attempts];
+  if (best.tracks.length >= 2) return best;
+  const initialCount = best.tracks.length;
   for (const fftSize of [16384, 32768].filter(size => size > options.fftSize)) {
-    // Keep at least 25 overlapping observations available for the detector.
     if (samples.length < fftSize * 4) continue;
     attempts.push(fftSize);
     const result = analyzeSignal(samples, sampleRate, p => progress({...p, text: `Ny søgning med FFT ${fftSize.toLocaleString('da-DK')} · ${p.text}`}), {...options, fftSize});
-    result.resolutionAttempts = [...attempts];
-    if (result.tracks.length) {
-      result.warnings.unshift(`Standardopløsningen fandt ingen spor. FFT ${fftSize.toLocaleString('da-DK')} gav ${result.tracks.length} automatisk(e) kurveforslag. Kontrollér kurven visuelt; det er ikke en bekræftet flypassage.`);
-      return result;
-    }
-    last = result;
+    // Retain a detected passage: a new resolution must explain the same time/frequency trace.
+    const retains = best.tracks.every(old => result.tracks.some(track => {
+      const overlap = Math.max(0, Math.min(old.end, track.end) - Math.max(old.start, track.start));
+      if (overlap < .6 * (old.end - old.start)) return false;
+      const errors = old.points.filter((p, i) => i % 8 === 0 && p.t >= track.start && p.t <= track.end).map(p => {
+        const q = track.points.reduce((a, b) => Math.abs(b.t - p.t) < Math.abs(a.t - p.t) ? b : a);
+        return Math.abs(q.hz - p.hz) / p.hz;
+      });
+      return errors.length > 0 && median(errors) < .02;
+    }));
+    if (!best.tracks.length || (result.tracks.length > best.tracks.length && retains)) best = result;
+    if (best.tracks.length >= 2) break;
   }
-  last.warnings.unshift(`Ingen automatiske spor ved FFT ${attempts.map(size => size.toLocaleString('da-DK')).join(', ')}. Zoom ind og undersøg lyden; en optagelse indeholder ikke nødvendigvis en målbar flykurve.`);
-  return last;
+  best.resolutionAttempts = [...attempts];
+  if (!best.tracks.length) best.warnings.unshift(`Ingen automatiske spor ved FFT ${attempts.map(size => size.toLocaleString('da-DK')).join(', ')}. Zoom ind og undersøg lyden; en optagelse indeholder ikke nødvendigvis en målbar flykurve.`);
+  else if (best.tracks.length > initialCount) best.warnings.unshift(`Finere frekvensanalyse fandt ${best.tracks.length - initialCount} ekstra spor. FFT ${best.fftSize.toLocaleString('da-DK')} bruges til den samlede analyse.`);
+  return best;
 }
 
 /** Deterministic STFT + continuity-constrained tonal-ridge extraction. NOT an aircraft classifier. */
