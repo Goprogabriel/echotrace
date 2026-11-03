@@ -104,7 +104,7 @@ Annuller | Cancel
 Lydens frekvenser | Sound frequencies
 Afventer måling | Awaiting analysis
 {0} kurveforslag | {0} curve suggestions
-Spektrogram af den valgte optagelse. Brug punktfelterne nedenfor til manuel optegning. | Spectrogram of the selected recording. Use the point fields below for manual tracing.
+Spektrogram af den valgte optagelse. | Spectrogram of the selected recording.
 Lydsporet er åbnet | Audio track opened
 Leder efter lydsporet | Looking for the audio track
 Frekvensdata vises, når de er beregnet. | Frequency data will appear once calculated.
@@ -124,26 +124,18 @@ Vis hele optagelsen | Show full recording
 Analysér fra · Hz | Analyse from · Hz
 Analysér til · Hz | Analyse to · Hz
 FFT / opløsning | FFT / resolution
-Større FFT adskiller nærliggende toner bedre, men udglatter hurtige ændringer. Ny analyse erstatter også dine manuelle spor. | A larger FFT separates nearby tones better but smooths out rapid changes. Reanalysing also replaces your manual tracks.
+Større FFT adskiller nærliggende toner bedre, men udglatter hurtige ændringer. | A larger FFT separates nearby tones better but smooths out rapid changes.
 Analysér lyden igen | Reanalyse audio
 Vælg op til tre spor til søgningen | Select up to three tracks for the search
-{0} · Manuelt optegnet | {0} · Manually traced
 {0} · Automatisk | {0} · Automatic
 {0} s · {1} Hz fald | {0} s · {1} Hz drop
 Slet | Delete
 Ingen kurver opfylder kravene til varighed, sammenhæng og frekvensfald. | No curves meet the duration, continuity and frequency-drop requirements.
 Afprøvet FFT: {0}. | FFT sizes tried: {0}.
-Zoom ind, eller tegn en kurve manuelt, hvis du faktisk kan se den. | Zoom in, or trace a curve manually if you can actually see it.
+Prøv et andet frekvensbånd eller en højere FFT-opløsning, og analysér lyden igen. | Try another frequency band or a higher FFT resolution, then analyse the audio again.
 Manglende kurver afgør ikke, om der er et fly i optagelsen. | Missing curves do not determine whether the recording contains an aircraft.
-Luk optegning | Close tracing
-Tegn et svagt spor | Trace a faint track
-Klik langs den synlige kurve, eller tilføj punkter med felterne. Brug mindst tre punkter over mindst 8 sekunder. Mellemrummene forbindes med rette linjer; flere punkter følger kurven bedre. | Click along the visible curve or add points using the fields. Use at least three points over at least 8 seconds. Points are joined by straight lines; adding more points follows the curve more closely.
 Tid · sekunder | Time · seconds
 Frekvens · Hz | Frequency · Hz
-Tilføj punkt | Add point
-Fortryd punkt | Undo point
-Gem spor ({0} punkter) | Save track ({0} points)
-{0} punkter. En optegnet kurve er din måling og er ikke en automatisk bekræftelse af flylyd. | {0} points. A traced curve is your measurement, not automatic confirmation of aircraft sound.
 Bemærkninger til lyden ({0}) | Audio notes ({0})
 Lydens amplitude over tid | Audio amplitude over time
 Hvornår er optagelsen lavet? | When was the recording made?
@@ -238,10 +230,10 @@ En selvhostet kopi kan ændres. Du skal derfor stole på den side, du åbner, el
 Hvad programmet faktisk gør | What the program actually does
 Echotrace er en selvstændig, eksperimentel implementering. Det er ikke den oprindelige videos kode og ikke en valideret erstatning for dens forskningsarbejde. | Echotrace is an independent, experimental implementation. It is not the original video's code or a validated replacement for that research.
 Browseren afkoder lyd til PCM ved 8 kHz. En Hann-vinduesfunktion og en valgfri FFT på 8.192, 16.384 eller 32.768 punkter danner spektrogrammet. Standard er cirka 0,98 Hz frekvensafstand og 30–1000 Hz. Analysebånd, tidszoom og kontrast kan justeres. Længere FFT-vinduer forbedrer frekvensopløsningen på bekostning af tidsopløsningen. | The browser decodes audio to PCM at 8 kHz. A Hann window and an FFT of 8,192, 16,384 or 32,768 points produce the spectrogram. The default frequency spacing is about 0.98 Hz over 30–1000 Hz. The analysis band, time zoom and contrast are adjustable. Longer FFT windows improve frequency resolution at the expense of time resolution.
-En kontinuitetsbegrænset sporingsalgoritme leder efter fremtrædende tonale kurver. Heuristiske filtre fjerner stationære toner, korte spor, store spring og nære harmoniske dubletter. Separate passager kan findes, selv om de kun fylder en lille del af optagelsen. Svage kurver kan også tegnes manuelt med mindst tre punkter over otte sekunder. Vælg ét til tre spor til søgningen. Manuelle målepunkter gemmes i rapporten. Hverken tonen eller kurvens form beviser, at kilden er et fly. | A continuity-constrained tracking algorithm looks for prominent tonal curves. Heuristic filters remove stationary tones, short tracks, large jumps and close harmonic duplicates. Separate passes can be found even if they occupy only a small part of the recording. Faint curves can also be traced manually with at least three points over eight seconds. Select one to three tracks for the search. Manual anchor points are saved in the report. Neither a tone nor the shape of its curve proves that the source is an aircraft.
+En kontinuitetsbegrænset sporingsalgoritme leder efter fremtrædende tonale kurver. Heuristiske filtre fjerner stationære toner, korte spor, store spring og nære harmoniske dubletter. Separate passager kan findes, selv om de kun fylder en lille del af optagelsen. Vælg ét til tre spor til søgningen. Hverken tonen eller kurvens form beviser, at kilden er et fly. | A continuity-constrained tracking algorithm looks for prominent tonal curves. Heuristic filters remove stationary tones, short tracks, large jumps and close harmonic duplicates. Separate passes can be found even if they occupy only a small part of the recording. Select one to three tracks for the search. Neither a tone nor the shape of its curve proves that the source is an aircraft.
 Hørbar flylyd og brugbare kurver | Audible aircraft sound and usable curves
 Der er forskel på at høre et fly og at måle en vedvarende tone, som kan sammenlignes med en Dopplermodel. Appen indeholder ingen generel model til at genkende flylyde. Den leder efter smalle, sammenhængende frekvensspor med et målbart fald. | Hearing an aircraft and measuring a sustained tone that can be compared with a Doppler model are different tasks. The app has no general aircraft sound recognition model. It looks for narrow, continuous frequency tracks with a measurable drop.
-Et jetfly kan give kraftig støj over mange frekvenser uden at denne analyse finder en brugbar kurve. Både propellerfly og jetfly kan have tonale komponenter, men de skal kunne adskilles og følges i den konkrete optagelse. Nul kurveforslag betyder, at den nuværende model ikke har fundet sit nødvendige målegrundlag. Det afgør ikke, om der er et fly i lyden. Manuel optegning skal følge en faktisk synlig tone; den kan ikke skabe et målegrundlag fra bred støj. | A jet aircraft can produce loud noise across many frequencies without this analysis finding a usable curve. Both propeller and jet aircraft can have tonal components, but those tones must be distinguishable and trackable in the recording. Zero curve suggestions means the current model has not found the measurements it needs. It does not determine whether an aircraft is audible. Manual tracing must follow a genuinely visible tone; it cannot create measurements from broadband noise.
+Et jetfly kan give kraftig støj over mange frekvenser uden at denne analyse finder en brugbar kurve. Både propellerfly og jetfly kan have tonale komponenter, men de skal kunne adskilles og følges i den konkrete optagelse. Nul kurveforslag betyder, at den nuværende model ikke har fundet sit nødvendige målegrundlag. Det afgør ikke, om der er et fly i lyden. | A jet aircraft can produce loud noise across many frequencies without this analysis finding a usable curve. Both propeller and jet aircraft can have tonal components, but those tones must be distinguishable and trackable in the recording. Zero curve suggestions means the current model has not found the measurements it needs. It does not determine whether an aircraft is audible.
 Frekvens og forsinkelse | Frequency and delay
 modtaget | received
 udsendt | emitted
@@ -316,8 +308,6 @@ Demoen kunne ikke åbnes. | The demo could not be opened.
 Eksperimentelle hypoteser, ikke bekræftede placeringer. Fejlmål er frekvensafvigelser, ikke sandsynligheder. Ingen kalibreret lokationspræcision. Brug ikke rapporten til at identificere en person. | Experimental hypotheses, not verified locations. Scores are frequency errors, not probabilities. No calibrated position accuracy. Do not use this report to identify a person.
 Rapporten indeholder tid og kandidatområder. Del den med omtanke. | The report contains a time and candidate areas. Share it with care.
 Vælg mindst 1 sekund og 5 Hz inden for den analyserede tid og frekvens. | Choose at least 1 second and 5 Hz within the analysed time and frequency range.
-Indtast tid og frekvens inden for det analyserede spektrogram. | Enter a time and frequency within the analysed spectrogram.
-Sporet er gemt. Fravælg et andet spor for at bruge det i søgningen. | Track saved. Deselect another track to use it in the search.
 Åbn optagelsen igen for at genanalysere. | Reopen the recording to reanalyse it.
 Vælg et analysebånd inden for 20–2000 Hz, mindst 20 Hz bredt. | Choose an analysis band within 20–2000 Hz, at least 20 Hz wide.
 Genanalyserer den lokale lyd | Reanalysing local audio
@@ -360,8 +350,6 @@ Den lokale lydanalyse er klar | Local audio analysis is ready
 Ny søgning med FFT {0} · {1} | Retrying with FFT {0} · {1}
 Standardopløsningen fandt ingen spor. FFT {0} gav {1} automatisk(e) kurveforslag. Kontrollér kurven visuelt; det er ikke en bekræftet flypassage. | The default resolution found no tracks. FFT {0} produced {1} automatic curve suggestions. Inspect the curve visually; this is not a confirmed aircraft pass.
 Ingen automatiske spor ved FFT {0}. Zoom ind og undersøg lyden; en optagelse indeholder ikke nødvendigvis en målbar flykurve. | No automatic tracks at FFT {0}. Zoom in and examine the audio; a recording does not necessarily contain a measurable aircraft curve.
-Markér mindst tre punkter med forskellige tider inden for spektrogrammet. | Mark at least three points at different times within the spectrogram.
-Et manuelt spor skal dække mindst 8 sekunder. | A manual track must span at least 8 seconds.
 Der er ingen tonale spor at matche. | There are no tonal tracks to match.
 Vælg højst tre spor til én søgning. | Select at most three tracks for one search.
 Datasættet indeholder ingen anvendelige flybaner. | The dataset contains no usable flight tracks.
@@ -374,7 +362,6 @@ Eksperimentel model. Et godt kurvematch er ikke bevis for optagelsens placering.
 Der søges kun i det valgte område og tidsinterval. Et bedre match kan eksistere udenfor. | Only the selected area and time interval are searched. A better match may exist outside them.
 Modellen antager en stationær mikrofon, en konstant motortone og ensartet, vindstille luft. | The model assumes a stationary microphone, a constant engine tone and uniform, windless air.
 ADS-B-højder, lydens hastighed og ukendt kameratid kan give systematiske fejl. Gridafstand er ikke en sikkerhedsradius. | ADS-B altitudes, the speed of sound and an uncertain camera clock can cause systematic errors. Grid spacing is not a confidence radius.
-Manuelle spor bygger på brugerens optegnede punkter med lineær interpolation. Et match bekræfter ikke, at kurven findes i lyden. | Manual tracks use the user's anchor points with linear interpolation. A match does not confirm that the curve exists in the audio.
 Kun én uafhængig flybane matcher. Spejlede og aflange løsningsområder kan ikke udelukkes. | Only one independent flight track matches. Mirrored and elongated solution areas cannot be ruled out.
 Flere adskilte områder passer til modellen. Resultatet er tvetydigt. | Several separate areas fit the model. The result is ambiguous.
 Ingen kandidater bestod den eksperimentelle kvalitetsgrænse. | No candidates passed the experimental quality threshold.
@@ -391,7 +378,6 @@ Alle {0} tidsrelevante, indlæste flybaner blev groft afsøgt. De {1} bedst rang
 Søgningen bruger højst 120 km lydafstand og grov geografisk/tidsmæssig afsøgning. Fly uden data eller kandidater uden for disse modelgrænser kan blive overset. | The search uses a maximum sound propagation distance of 120 km and coarse geographic/time sampling. Aircraft without data and candidates outside these model limits may be missed.
 Modellen antager stationær mikrofon, konstant kildetone og ensartet vindstille luft. Gridafstand er ikke lokationspræcision. | The model assumes a stationary microphone, a constant source tone and uniform, windless air. Grid spacing is not location accuracy.
 I tætte områder blev højst de 100 nærmeste flybaner sammenlignet i den detaljerede søgning. | In dense areas, only the 100 nearest flight tracks were compared during detailed search.
-Manuelle spor er brugerens optegning, ikke en automatisk bekræftelse af flylyd. | Manual tracks are user measurements, not automatic confirmation of aircraft sound.
 Kun én flybane matcher. Spejlede og aflange løsningsområder kan ikke udelukkes. | Only one flight track matches. Mirrored and elongated solution areas cannot be ruled out.
 Den globale kandidatsøgning er færdig | Global candidate search complete
 Analysen mislykkedes. | Analysis failed.

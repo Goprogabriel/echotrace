@@ -35,7 +35,7 @@ test('A planted falling tone must beat all six controls at identical times',()=>
  wideCurve.forEach((p,f)=>a.db[f*192+p.hz+20]=-40);
  assert.equal(compareSpectralControls(a,wideCurve).status,'weak');
 });
-test('Flat noise and a manually drawn phantom cannot pass final audio acceptance',()=>{
+test('Flat noise and a phantom curve cannot pass final audio acceptance',()=>{
  const result={candidates:[{accepted:true,misfit:.001,matches:[{predicted:wideCurve}]}],warnings:[]};
  validateSpectralSupport(result,wideFixture());
  assert.equal(result.candidates[0].curveAccepted,true);assert.equal(result.candidates[0].accepted,false);

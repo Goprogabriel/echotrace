@@ -108,7 +108,6 @@ export function matchFlights(tracks: Ridge[], flights: Flight[], config: SearchC
     'Der søges kun i det valgte område og tidsinterval. Et bedre match kan eksistere udenfor.',
     'Modellen antager en stationær mikrofon, en konstant motortone og ensartet, vindstille luft.',
     'ADS-B-højder, lydens hastighed og ukendt kameratid kan give systematiske fejl. Gridafstand er ikke en sikkerhedsradius.'];
-  if (selected.some(t => t.source === 'manual')) warnings.push('Manuelle spor bygger på brugerens optegnede punkter med lineær interpolation. Et match bekræfter ikke, at kurven findes i lyden.');
   if (candidates[0]?.matchedFlights === 1) warnings.push('Kun én uafhængig flybane matcher. Spejlede og aflange løsningsområder kan ikke udelukkes.');
   if (candidates.filter(c => c.accepted).length > 1) warnings.push('Flere adskilte områder passer til modellen. Resultatet er tvetydigt.');
   if (!candidates.some(c => c.accepted)) warnings.unshift('Ingen kandidater bestod den eksperimentelle kvalitetsgrænse.');

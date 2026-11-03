@@ -175,7 +175,7 @@ function extractRidges(db, frames, bins, lo, sr, n, hop) {
             if (span < 8 || points.length / (span * sr / hop + 1) < .75 || drift < Math.max(3.5, first * .025))
                 continue;
             // Reject wandering paths assembled from random peaks at finer FFT resolutions.
-            // Curves with substantial reversals need visual inspection/manual tracing.
+            // Curves with substantial reversals are not handled by this automatic tracker.
             const totalVariation = points.slice(1).reduce((sum, p, i) => sum + Math.abs(p.hz - points[i].hz), 0);
             const netFall = points[0].hz - points.at(-1).hz;
             if (netFall <= 0 || totalVariation > 2 * netFall)
@@ -204,24 +204,4 @@ function extractRidges(db, frames, bins, lo, sr, n, hop) {
         }
     }
     return tracks;
-}
-/** User measurements, linearly interpolated for curve fitting; never automatic detections. */
-export function manualRidge(anchors, analysis, id) {
-    const sorted = anchors.map(p => ({ ...p })).sort((a, b) => a.t - b.t);
-    if (sorted.length < 3 || sorted.some((p, i) => !Number.isFinite(p.t) || !Number.isFinite(p.hz) || p.t < 0 || p.t > analysis.duration || p.hz < analysis.minHz || p.hz > analysis.maxHz || (i > 0 && p.t - sorted[i - 1].t < .01)))
-        throw new Error('Markér mindst tre punkter med forskellige tider inden for spektrogrammet.');
-    const start = sorted[0].t, end = sorted.at(-1).t;
-    if (end - start < 8)
-        throw new Error('Et manuelt spor skal dække mindst 8 sekunder.');
-    const points = [];
-    const count = Math.min(512, Math.max(32, Math.ceil((end - start) * analysis.sampleRate / analysis.hopSize)));
-    let j = 1;
-    for (let i = 0; i <= count; i++) {
-        const t = start + (end - start) * i / count;
-        while (j < sorted.length - 1 && sorted[j].t < t)
-            j++;
-        const a = sorted[j - 1], b = sorted[j];
-        points.push({ t, hz: a.hz + (b.hz - a.hz) * (t - a.t) / (b.t - a.t), snr: 12 });
-    }
-    return { id, source: 'manual', anchors: sorted, points, start, end, coverage: (end - start) / analysis.duration, driftHz: sorted[0].hz - sorted.at(-1).hz, medianSnr: 12 };
 }

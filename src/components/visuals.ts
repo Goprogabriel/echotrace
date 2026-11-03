@@ -22,7 +22,7 @@ export function spectrumColor(value: number): [number, number, number] {
 export function spectrumBounds(width: number, height: number): {left: number; top: number; width: number; height: number} {
   return {left: 45, top: 12, width: Math.max(1, Math.floor(width - 57)), height: Math.max(1, Math.floor(height - 39))};
 }
-export function drawSpectrogram(canvas: HTMLCanvasElement, analysis: SignalAnalysis, candidate?: Candidate, view?: SpectrumView, selectedTracks?: string[], anchors: {t: number; hz: number}[] = []): void {
+export function drawSpectrogram(canvas: HTMLCanvasElement, analysis: SignalAnalysis, candidate?: Candidate, view?: SpectrumView, selectedTracks?: string[]): void {
   const ctx = setupCanvas(canvas), {width: w, height: h} = canvas.getBoundingClientRect();
   const {left, top, width: pw, height: ph} = spectrumBounds(w, h);
   const start = view?.start ?? 0, end = view?.end || analysis.duration;
@@ -75,9 +75,6 @@ export function drawSpectrogram(canvas: HTMLCanvasElement, analysis: SignalAnaly
     ctx.strokeStyle = '#001a24'; ctx.lineWidth = 4; line(m.predicted);
     ctx.strokeStyle = '#65efff'; ctx.lineWidth = 2; line(m.predicted);
   });
-  ctx.strokeStyle = '#ba5317'; ctx.fillStyle = '#ba5317'; ctx.lineWidth = 1.5;
-  const sorted = [...anchors].sort((a, b) => a.t - b.t); line(sorted, false);
-  sorted.forEach(p => { const [x, y] = xy(p); ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill(); });
   ctx.restore();
 }
 /** Illustration only. Never used as analysis data or a result. */

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {fft,haversine,offsetPosition} from '../dist/js/core/math.js';
-import {analyzeSignal,analyzeSignalAdaptive,manualRidge} from '../dist/js/core/signal.js';
+import {analyzeSignal,analyzeSignalAdaptive} from '../dist/js/core/signal.js';
 import {dopplerFactor,ecef,prepareFlight,interpolate} from '../dist/js/core/physics.js';
 import {matchFlights} from '../dist/js/core/matcher.js';
 import {parseDataset,parseCsv,parseProvider,epochSeconds,buildQuery} from '../dist/js/core/data.js';
@@ -74,18 +74,6 @@ test('A recording with events 920 seconds apart preserves the original event tim
   assert(a.db.length<=4_000_000);
 });
 
-test('Manual tracing retains measured anchors, absolute audio times and provenance',()=>{
-  analysis??=analyzeSignal(wav(),8000);
-  const anchors=[{t:40,hz:110},{t:10,hz:160},{t:25,hz:140}];
-  const track=manualRidge(anchors,analysis,'M1');
-  assert.equal(track.source,'manual');assert.equal(track.start,10);assert.equal(track.end,40);
-  assert.deepEqual(track.anchors,[anchors[1],anchors[2],anchors[0]]);
-  assert.deepEqual(track.points[0],{t:10,hz:160,snr:12});
-  assert.equal(track.points.at(-1).hz,110);assert(track.points.length>=32);
-  assert.throws(()=>manualRidge([{t:1,hz:100},{t:1,hz:90},{t:20,hz:70}],analysis,'M2'));
-  assert.throws(()=>manualRidge([{t:1,hz:100},{t:2,hz:90},{t:3,hz:70}],analysis,'M2'));
-  assert.throws(()=>manualRidge([{t:-1,hz:100},{t:2,hz:90},{t:30,hz:70}],analysis,'M2'));
-});
 test('Matcher refuses more than three selected tracks instead of silently dropping events',()=>{
   analysis??=analyzeSignal(wav(),8000);
   assert.throws(()=>matchFlights([...analysis.tracks,...analysis.tracks],dataset.flights,config),/højst tre/);

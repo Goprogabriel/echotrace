@@ -113,8 +113,6 @@ export function matchGlobalFlights(tracks, flights, config, progress = () => { }
     ];
     if (crowded)
         warnings.push('I tætte områder blev højst de 100 nærmeste flybaner sammenlignet i den detaljerede søgning.');
-    if (tracks.some(t => t.source === 'manual'))
-        warnings.push('Manuelle spor er brugerens optegning, ikke en automatisk bekræftelse af flylyd.');
     if (unique[0]?.matchedFlights === 1)
         warnings.push('Kun én flybane matcher. Spejlede og aflange løsningsområder kan ikke udelukkes.');
     if (unique.filter(c => c.accepted).length > 1)

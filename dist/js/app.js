@@ -7,7 +7,6 @@ import { captureMedia, decodeMedia, validateMedia } from './core/audio.js';
 import { fetchFlights, importFlightFiles, parseDataset } from './core/data.js';
 import { startReveals } from './components/ui.js';
 import { drawIllustrationSpectrum, drawSpectrogram, drawWaveform, startHeroCanvas, spectrumBounds } from './components/visuals.js';
-import { manualRidge } from './core/signal.js';
 import { bindPlayback } from './components/playback.js';
 import { mountMap } from './components/map.js';
 setLanguage(languageFromUrl(location.href));
@@ -91,7 +90,7 @@ function initLab() {
     const draw = () => {
         const spectrum = root.querySelector('#lab-spectrum');
         if (spectrum && state.analysis)
-            drawSpectrogram(spectrum, state.analysis, undefined, state.spectrumView, state.selectedTracks, state.anchors);
+            drawSpectrogram(spectrum, state.analysis, undefined, state.spectrumView, state.selectedTracks);
         const wave = root.querySelector('#waveform'), values = state.analysis?.waveform || state.waveform;
         if (wave && values)
             drawWaveform(wave, values);
@@ -114,20 +113,8 @@ function initLab() {
                         return id === 'waveform' ? { left: 0, top: 0, width: r.width, height: r.height } : spectrumBounds(r.width, r.height);
                     } }];
         });
-        cleanups.push(bindPlayback(media, { plots, readouts: root.querySelectorAll('[data-playback-time]'), canSeek: () => !state.tracing && !isBusy(state), savedTime: playback.url === state.blobUrl ? playback.time : 0, resume: playback.url === state.blobUrl && playback.playing, onPosition: (time, playing) => { playback = { url: state.blobUrl, time, playing }; } }));
+        cleanups.push(bindPlayback(media, { plots, readouts: root.querySelectorAll('[data-playback-time]'), canSeek: () => !isBusy(state), savedTime: playback.url === state.blobUrl ? playback.time : 0, resume: playback.url === state.blobUrl && playback.playing, onPosition: (time, playing) => { playback = { url: state.blobUrl, time, playing }; } }));
     }
-    const spectrum = root.querySelector('#lab-spectrum');
-    if (spectrum)
-        spectrum.onclick = e => {
-            if (!state.tracing || isBusy(state) || !state.analysis)
-                return;
-            const rect = spectrum.getBoundingClientRect(), b = spectrumBounds(rect.width, rect.height), x = e.clientX - rect.left - b.left, y = e.clientY - rect.top - b.top;
-            if (x < 0 || x > b.width || y < 0 || y > b.height)
-                return;
-            const v = state.spectrumView;
-            state.anchors.push({ t: v.start + x / b.width * (v.end - v.start), hz: v.maxHz - y / b.height * (v.maxHz - v.minHz) });
-            render();
-        };
     root.querySelector('[name="view-gain"]')?.addEventListener('input', e => { state.spectrumView.gain = Number(e.target.value); draw(); });
     if (isBusy(state))
         root.querySelectorAll('#signal-controls input,#signal-controls select,#signal-controls button').forEach(el => el.disabled = true);
@@ -242,8 +229,6 @@ function runSignalWorker(decoded, id, adaptive = true) {
             state.signalOptions.fftSize = state.analysis.fftSize;
             state.selectedTracks = state.analysis.tracks.slice(0, 3).map(t => t.id);
             state.spectrumView = { start: 0, end: state.analysis.duration, minHz: state.analysis.minHz, maxHz: state.analysis.maxHz, gain: 0 };
-            state.anchors = [];
-            state.tracing = false;
             state.stage = 'ready';
             worker?.terminate();
             worker = null;
@@ -371,32 +356,6 @@ function signalAction(action) {
         }
         else if (action === 'spectrum-reset')
             state.spectrumView = { start: 0, end: a.duration, minHz: a.minHz, maxHz: a.maxHz, gain: 0 };
-        else if (action === 'trace-toggle') {
-            state.tracing = !state.tracing;
-            state.anchors = [];
-        }
-        else if (action === 'trace-add') {
-            const t = value('trace-time'), hz = value('trace-hz');
-            if (![t, hz].every(Number.isFinite) || t < 0 || t > a.duration || hz < a.minHz || hz > a.maxHz)
-                throw new Error('Indtast tid og frekvens inden for det analyserede spektrogram.');
-            state.anchors.push({ t, hz });
-        }
-        else if (action === 'trace-undo')
-            state.anchors.pop();
-        else if (action === 'trace-save') {
-            let i = 1;
-            while (a.tracks.some(t => t.id === `M${i}`))
-                i++;
-            const track = manualRidge(state.anchors, a, `M${i}`);
-            a.tracks.push(track);
-            if (state.selectedTracks.length < 3)
-                state.selectedTracks.push(track.id);
-            else
-                toast('Sporet er gemt. Fravælg et andet spor for at bruge det i søgningen.');
-            state.tracing = false;
-            state.anchors = [];
-            invalidateResult();
-        }
         else if (action === 'reanalyze') {
             if (!pcm || !state.decoded)
                 throw new Error('Åbn optagelsen igen for at genanalysere.');
@@ -419,7 +378,7 @@ function signalAction(action) {
     }
 }
 root.addEventListener('click', e => {
-    const target = e.target.closest('[data-action],[data-scroll],[data-candidate],[data-track-zoom],[data-track-delete],[data-language]');
+    const target = e.target.closest('[data-action],[data-scroll],[data-candidate],[data-track-zoom],[data-language]');
     if (!target)
         return;
     if (target.hasAttribute('disabled'))
@@ -437,13 +396,6 @@ root.addEventListener('click', e => {
                 return;
             const margin = Math.max(10, Math.abs(t.driftHz) * .2), hz = t.points.map(p => p.hz);
             state.spectrumView = { ...state.spectrumView, start: Math.max(0, t.start - 2), end: Math.min(state.analysis.duration, t.end + 2), minHz: Math.max(state.analysis.minHz, Math.min(...hz) - margin), maxHz: Math.min(state.analysis.maxHz, Math.max(...hz) + margin) };
-            render();
-            return;
-        }
-        if (target.dataset.trackDelete && state.analysis) {
-            state.analysis.tracks = state.analysis.tracks.filter(t => t.id !== target.dataset.trackDelete || t.source !== 'manual');
-            state.selectedTracks = state.selectedTracks.filter(id => state.analysis.tracks.some(t => t.id === id));
-            invalidateResult();
             render();
             return;
         }

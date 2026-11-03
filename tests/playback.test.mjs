@@ -32,7 +32,7 @@ test('Video seeking updates cursors and identifies time outside a zoomed view',t
  assert.equal(cursor.dataset.time,'100');assert(cursor.classes.has('outside-window'));assert.match(cursor.children[0].textContent,/uden for udsnit/);
  assert.equal(canvas.getAttribute('aria-valuenow'),'100');assert.equal(cursor.style.left,'160px');
 });
-test('Keyboard seeking clamps to duration and leaves manual tracing in control',t=>{
+test('Keyboard seeking clamps to duration and respects disabled seeking',t=>{
  let enabled=true;const {canvas,media}=setup(t,{canSeek:()=>enabled});
  event(canvas,'keydown',{key:'ArrowRight',shiftKey:true});assert.equal(media.currentTime,22);
  event(canvas,'keydown',{key:'End'});assert.equal(media.currentTime,120);

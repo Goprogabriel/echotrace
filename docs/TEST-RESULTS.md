@@ -163,3 +163,10 @@ Den lokale app er kontrolleret i browseren med den medfølgende syntetiske video
 - Det originale live API-svar er også importeret i den lokale browser: 2 flybaner, korrekt kilde og ODbL-licens. Der blev ikke kørt lokalisering på den syntetiske lyd med disse flydata, da tid og kilder ikke hører sammen.
 - Browserkontrol af den syntetiske demo på dansk og engelsk: begge spor består kontrollen, henholdsvis 53,2 og 50,2 dB over den stærkeste forskudte kontrol. Skærmbillede: `test-output/audio-controls.png`.
 - Dette er fortsat ikke validering af lokaliseringspræcision. Ingen tilsvarende rigtig lydoptagelse med kendt mikrofonplacering er tilgængelig.
+
+
+## Manuel optegning fjernet · 3. november 2026
+
+Knappen til at tegne, punkteditoren, ankre, tilhørende app-tilstand og funktionen til at konstruere manuelle spor er fjernet. Kun automatisk fundne spor kan vælges til søgningen. Zoom, genanalyse, sporvalg og afspilningsspoling er bevaret. Danske og engelske hjælpetekster samt metodebeskrivelsen er opdateret.
+
+`npm run check` består med 63 tests. Testen af den fjernede manuelle sporkonstruktion er fjernet sammen med funktionen.

@@ -2,8 +2,7 @@ export interface RidgePoint { t: number; hz: number; snr: number }
 export interface Ridge {
   id: string; points: RidgePoint[]; coverage: number; driftHz: number;
   medianSnr: number; start: number; end: number;
-  source?: 'auto' | 'manual';
-  anchors?: {t: number; hz: number}[];
+  source?: 'auto';
 }
 export interface SignalOptions { fftSize: number; minHz: number; maxHz: number }
 export interface SpectrumView { start: number; end: number; minHz: number; maxHz: number; gain: number }

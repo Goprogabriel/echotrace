@@ -21,7 +21,7 @@ test('Danish remains unchanged and English handles nested progress and runtime v
 });
 test('Composite empty results translate each sentence without fabricating a detection',()=>{
   setLanguage('en');
-  const text=t('Ingen kurver opfylder kravene til varighed, sammenhæng og frekvensfald. Afprøvet FFT: 8.192, 16.384, 32.768. Zoom ind, eller tegn en kurve manuelt, hvis du faktisk kan se den. Manglende kurver afgør ikke, om der er et fly i optagelsen.');
+  const text=t('Ingen kurver opfylder kravene til varighed, sammenhæng og frekvensfald. Afprøvet FFT: 8.192, 16.384, 32.768. Prøv et andet frekvensbånd eller en højere FFT-opløsning, og analysér lyden igen. Manglende kurver afgør ikke, om der er et fly i optagelsen.');
   assert(text.includes('No curves meet the duration'));assert(text.includes('FFT sizes tried: 8,192, 16,384, 32,768.'));
   assert(text.includes('Missing curves do not determine whether the recording contains an aircraft.'));
   assert.equal(t('Datoen ligger uden for tjenestens arkiv (2025-04-28 → 2026-11-02). Importér historiske data i stedet.'),'The date is outside the service archive (2025-04-28 → 2026-11-02). Import historical data instead.');

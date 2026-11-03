@@ -7,7 +7,6 @@ import {captureMedia, decodeMedia, validateMedia} from './core/audio.js';
 import {fetchFlights, importFlightFiles, parseDataset} from './core/data.js';
 import {startReveals} from './components/ui.js';
 import {drawIllustrationSpectrum, drawSpectrogram, drawWaveform, startHeroCanvas, spectrumBounds} from './components/visuals.js';
-import {manualRidge} from './core/signal.js';
 import {bindPlayback} from './components/playback.js';
 import {mountMap} from './components/map.js';
 import type {DecodedAudio, FitResult, FlightDataset, Progress, SearchConfig, SignalAnalysis} from './types.js';
@@ -64,7 +63,7 @@ function changeLanguage(language:'da'|'en'):void {
 }
 function initLab(): void {
   const draw=()=>{
-    const spectrum=root.querySelector<HTMLCanvasElement>('#lab-spectrum');if(spectrum&&state.analysis)drawSpectrogram(spectrum,state.analysis,undefined,state.spectrumView,state.selectedTracks,state.anchors);
+    const spectrum=root.querySelector<HTMLCanvasElement>('#lab-spectrum');if(spectrum&&state.analysis)drawSpectrogram(spectrum,state.analysis,undefined,state.spectrumView,state.selectedTracks);
     const wave=root.querySelector<HTMLCanvasElement>('#waveform'),values=state.analysis?.waveform||state.waveform;if(wave&&values)drawWaveform(wave,values);
     const result=root.querySelector<HTMLCanvasElement>('#result-spectrum');if(result&&state.analysis)drawSpectrogram(result,state.analysis,state.result?.candidates[state.selected]);
   };
@@ -77,16 +76,8 @@ function initLab(): void {
         const r=canvas.getBoundingClientRect();return id==='waveform'?{left:0,top:0,width:r.width,height:r.height}:spectrumBounds(r.width,r.height);
       }}];
     });
-    cleanups.push(bindPlayback(media,{plots,readouts:root.querySelectorAll<HTMLElement>('[data-playback-time]'),canSeek:()=>!state.tracing&&!isBusy(state),savedTime:playback.url===state.blobUrl?playback.time:0,resume:playback.url===state.blobUrl&&playback.playing,onPosition:(time,playing)=>{playback={url:state.blobUrl,time,playing};}}));
+    cleanups.push(bindPlayback(media,{plots,readouts:root.querySelectorAll<HTMLElement>('[data-playback-time]'),canSeek:()=>!isBusy(state),savedTime:playback.url===state.blobUrl?playback.time:0,resume:playback.url===state.blobUrl&&playback.playing,onPosition:(time,playing)=>{playback={url:state.blobUrl,time,playing};}}));
   }
-  const spectrum=root.querySelector<HTMLCanvasElement>('#lab-spectrum');
-  if(spectrum)spectrum.onclick=e=>{
-    if(!state.tracing||isBusy(state)||!state.analysis)return;
-    const rect=spectrum.getBoundingClientRect(), b=spectrumBounds(rect.width,rect.height), x=e.clientX-rect.left-b.left,y=e.clientY-rect.top-b.top;
-    if(x<0||x>b.width||y<0||y>b.height)return;
-    const v=state.spectrumView;
-    state.anchors.push({t:v.start+x/b.width*(v.end-v.start),hz:v.maxHz-y/b.height*(v.maxHz-v.minHz)});render();
-  };
   root.querySelector<HTMLInputElement>('[name="view-gain"]')?.addEventListener('input',e=>{state.spectrumView.gain=Number((e.target as HTMLInputElement).value);draw();});
   if(isBusy(state))root.querySelectorAll<HTMLInputElement|HTMLSelectElement|HTMLButtonElement>('#signal-controls input,#signal-controls select,#signal-controls button').forEach(el=>el.disabled=true);
   if(state.result&&state.config&&state.dataset){
@@ -151,7 +142,7 @@ function runSignalWorker(decoded: DecodedAudio, id: number, adaptive=true): void
     if(e.data.type==='progress')updateProgress(e.data.data as Progress);
     if(e.data.type==='error')fail(new Error(e.data.message),id);
     if(e.data.type==='analysis'){
-      state.analysis=e.data.data as SignalAnalysis;state.signalOptions.fftSize=state.analysis.fftSize;state.selectedTracks=state.analysis.tracks.slice(0,3).map(t=>t.id);state.spectrumView={start:0,end:state.analysis.duration,minHz:state.analysis.minHz,maxHz:state.analysis.maxHz,gain:0};state.anchors=[];state.tracing=false;state.stage='ready';worker?.terminate();worker=null;render();
+      state.analysis=e.data.data as SignalAnalysis;state.signalOptions.fftSize=state.analysis.fftSize;state.selectedTracks=state.analysis.tracks.slice(0,3).map(t=>t.id);state.spectrumView={start:0,end:state.analysis.duration,minHz:state.analysis.minHz,maxHz:state.analysis.maxHz,gain:0};state.stage='ready';worker?.terminate();worker=null;render();
       if(state.demo&&state.analysis.tracks.length)void runMatching();
       else root.querySelector('#search-section')?.scrollIntoView({behavior:'smooth',block:'start'});
     }
@@ -227,19 +218,7 @@ function signalAction(action:string):void {
       if(![start,end,minHz,maxHz].every(Number.isFinite)||start<0||end>a.duration||end-start<1||minHz<a.minHz||maxHz>a.maxHz||maxHz-minHz<5)throw new Error('Vælg mindst 1 sekund og 5 Hz inden for den analyserede tid og frekvens.');
       state.spectrumView={...state.spectrumView,start,end,minHz,maxHz};
     }else if(action==='spectrum-reset')state.spectrumView={start:0,end:a.duration,minHz:a.minHz,maxHz:a.maxHz,gain:0};
-    else if(action==='trace-toggle'){state.tracing=!state.tracing;state.anchors=[];}
-    else if(action==='trace-add'){
-      const t=value('trace-time'),hz=value('trace-hz');
-      if(![t,hz].every(Number.isFinite)||t<0||t>a.duration||hz<a.minHz||hz>a.maxHz)throw new Error('Indtast tid og frekvens inden for det analyserede spektrogram.');
-      state.anchors.push({t,hz});
-    }else if(action==='trace-undo')state.anchors.pop();
-    else if(action==='trace-save'){
-      let i=1;while(a.tracks.some(t=>t.id===`M${i}`))i++;
-      const track=manualRidge(state.anchors,a,`M${i}`);a.tracks.push(track);
-      if(state.selectedTracks.length<3)state.selectedTracks.push(track.id);
-      else toast('Sporet er gemt. Fravælg et andet spor for at bruge det i søgningen.');
-      state.tracing=false;state.anchors=[];invalidateResult();
-    }else if(action==='reanalyze'){
+    else if(action==='reanalyze'){
       if(!pcm||!state.decoded)throw new Error('Åbn optagelsen igen for at genanalysere.');
       const fftSize=value('signal-fft'),minHz=value('signal-min'),maxHz=value('signal-max');
       if(![8192,16384,32768].includes(fftSize)||![minHz,maxHz].every(Number.isFinite)||minHz<20||maxHz>2000||maxHz-minHz<20)throw new Error('Vælg et analysebånd inden for 20–2000 Hz, mindst 20 Hz bredt.');
@@ -250,7 +229,7 @@ function signalAction(action:string):void {
   }catch(error){toast(error instanceof Error?error.message:'Kontrollér lydindstillingerne.');}
 }
 root.addEventListener('click',e=>{
-  const target=(e.target as Element).closest<HTMLElement>('[data-action],[data-scroll],[data-candidate],[data-track-zoom],[data-track-delete],[data-language]');if(!target)return;
+  const target=(e.target as Element).closest<HTMLElement>('[data-action],[data-scroll],[data-candidate],[data-track-zoom],[data-language]');if(!target)return;
   if(target.hasAttribute('disabled'))return;
   if(target.dataset.language==='da'||target.dataset.language==='en'){changeLanguage(target.dataset.language);return;}
   if(target.closest('#signal-controls')){
@@ -260,7 +239,6 @@ root.addEventListener('click',e=>{
       const margin=Math.max(10,Math.abs(t.driftHz)*.2),hz=t.points.map(p=>p.hz);
       state.spectrumView={...state.spectrumView,start:Math.max(0,t.start-2),end:Math.min(state.analysis.duration,t.end+2),minHz:Math.max(state.analysis.minHz,Math.min(...hz)-margin),maxHz:Math.min(state.analysis.maxHz,Math.max(...hz)+margin)};render();return;
     }
-    if(target.dataset.trackDelete&&state.analysis){state.analysis.tracks=state.analysis.tracks.filter(t=>t.id!==target.dataset.trackDelete||t.source!=='manual');state.selectedTracks=state.selectedTracks.filter(id=>state.analysis!.tracks.some(t=>t.id===id));invalidateResult();render();return;}
     if(target.dataset.action){signalAction(target.dataset.action);return;}
   }
   if(target.dataset.scroll){

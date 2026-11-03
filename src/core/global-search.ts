@@ -92,7 +92,6 @@ export function matchGlobalFlights(tracks: Ridge[], flights: Flight[], config: S
     'Modellen antager stationær mikrofon, konstant kildetone og ensartet vindstille luft. Gridafstand er ikke lokationspræcision.'
   ];
   if (crowded) warnings.push('I tætte områder blev højst de 100 nærmeste flybaner sammenlignet i den detaljerede søgning.');
-  if (tracks.some(t => t.source === 'manual')) warnings.push('Manuelle spor er brugerens optegning, ikke en automatisk bekræftelse af flylyd.');
   if (unique[0]?.matchedFlights === 1) warnings.push('Kun én flybane matcher. Spejlede og aflange løsningsområder kan ikke udelukkes.');
   if (unique.filter(c => c.accepted).length > 1) warnings.push('Flere adskilte områder passer til modellen. Resultatet er tvetydigt.');
   if (!unique.some(c => c.accepted)) warnings.unshift('Ingen kandidater bestod den eksperimentelle kvalitetsgrænse.');
