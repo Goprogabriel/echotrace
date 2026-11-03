@@ -1,3 +1,4 @@
+import {getLanguage, getLocale, languageFromUrl, languageUrl, setLanguage, translateText, translateTree} from './i18n.js';
 import {homePage} from './pages/home.js';
 import {labPage} from './pages/lab.js';
 import {docsPage} from './pages/docs.js';
@@ -11,18 +12,20 @@ import {bindPlayback} from './components/playback.js';
 import {mountMap} from './components/map.js';
 import type {DecodedAudio, FitResult, FlightDataset, Progress, SearchConfig, SignalAnalysis} from './types.js';
 
+setLanguage(languageFromUrl(location.href));
 const root = document.querySelector<HTMLElement>('#app')!;
 const fileInput = document.querySelector<HTMLInputElement>('#media-input')!;
 const dataInput = document.querySelector<HTMLInputElement>('#data-input')!;
 let state: AppState = initialState(), cleanups: (()=>void)[] = [];
 let worker: Worker | null = null, controller = new AbortController(), job = 0;
+let currentToast = '';
 let toastTimer: ReturnType<typeof setTimeout>;
 let pcm: Float32Array | null = null;
 let playback = {url: '', time: 0, playing: false};
 const route = (): string => location.hash.split('?')[0] || '#/';
 
 function toast(message: string): void {
-  const el=document.querySelector<HTMLElement>('#toast')!;el.textContent=message;el.classList.add('show');
+  currentToast=message;const el=document.querySelector<HTMLElement>('#toast')!;el.textContent=translateText(message);el.classList.add('show');
   clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),5500);
 }
 function render(): void {
@@ -44,6 +47,20 @@ function render(): void {
     root.querySelector<HTMLElement>('#demo-plane')!.style.left=`${15+(Number(slider.value)+100)/200*70}%`;
   };
   if(r==='#/lab')initLab();
+  document.documentElement.lang=getLanguage();
+  document.title=translateText(document.title);
+  const description=document.querySelector<HTMLMetaElement>('meta[name="description"]');
+  if(description){const source=description.dataset.source||description.content;description.dataset.source=source;description.content=translateText(source);}
+  document.querySelector<HTMLElement>('#toast')!.textContent=currentToast;
+  translateTree(document.body);
+}
+function changeLanguage(language:'da'|'en'):void {
+  const fields=Array.from(root.querySelectorAll<HTMLInputElement|HTMLSelectElement>('input[name],select[name]'),el=>({name:el.name,value:el.value,checked:el instanceof HTMLInputElement?el.checked:false}));
+  const details=Array.from(root.querySelectorAll('details'),el=>el.open);
+  setLanguage(language);history.replaceState(null,'',languageUrl(location.href,language));render();
+  for(const field of fields){const el=Array.from(root.querySelectorAll<HTMLInputElement|HTMLSelectElement>('input[name],select[name]')).find(el=>el.name===field.name);if(el){el.value=field.value;if(el instanceof HTMLInputElement)el.checked=field.checked;}}
+  root.querySelectorAll('details').forEach((el,i)=>el.open=details[i]||false);
+  root.querySelector<HTMLElement>(`[data-language="${language}"]`)?.focus({preventScroll:true});
 }
 function initLab(): void {
   const draw=()=>{
@@ -82,7 +99,7 @@ function initLab(): void {
 }
 function updateProgress(progress: Progress): void {
   state.progress=progress;
-  const text=root.querySelector('#progress-text');if(text)text.textContent=progress.text;
+  const text=root.querySelector('#progress-text');if(text)text.textContent=translateText(progress.text);
   const number=root.querySelector('#progress-percent');if(number)number.textContent=`${Math.round(progress.progress*100)}%`;
   const bar=root.querySelector<HTMLElement>('#progress-bar');if(bar)bar.style.width=`${progress.progress*100}%`;
 }
@@ -126,7 +143,7 @@ async function analyzeFile(file: File, demo?: DemoSetup, capture=false): Promise
     fail(error,id);
   }
 }
-function runSignalWorker(decoded: DecodedAudio, id: number): void {
+function runSignalWorker(decoded: DecodedAudio, id: number, adaptive=true): void {
   worker=new Worker(new URL('./workers/analysis.worker.js',import.meta.url),{type:'module'});
   worker.onerror=()=>fail(new Error('Analysearbejderen kunne ikke startes. Åbn appen via localhost eller HTTPS — ikke direkte som en file://-fil.'),id);
   worker.onmessage=(e:MessageEvent)=>{
@@ -134,12 +151,12 @@ function runSignalWorker(decoded: DecodedAudio, id: number): void {
     if(e.data.type==='progress')updateProgress(e.data.data as Progress);
     if(e.data.type==='error')fail(new Error(e.data.message),id);
     if(e.data.type==='analysis'){
-      state.analysis=e.data.data as SignalAnalysis;state.selectedTracks=state.analysis.tracks.slice(0,3).map(t=>t.id);state.spectrumView={start:0,end:state.analysis.duration,minHz:state.analysis.minHz,maxHz:state.analysis.maxHz,gain:0};state.anchors=[];state.tracing=false;state.stage='ready';worker?.terminate();worker=null;render();
+      state.analysis=e.data.data as SignalAnalysis;state.signalOptions.fftSize=state.analysis.fftSize;state.selectedTracks=state.analysis.tracks.slice(0,3).map(t=>t.id);state.spectrumView={start:0,end:state.analysis.duration,minHz:state.analysis.minHz,maxHz:state.analysis.maxHz,gain:0};state.anchors=[];state.tracing=false;state.stage='ready';worker?.terminate();worker=null;render();
       if(state.demo&&state.analysis.tracks.length)void runMatching();
       else root.querySelector('#search-section')?.scrollIntoView({behavior:'smooth',block:'start'});
     }
   };
-  worker.postMessage({type:'analyze',samples:decoded.samples,sampleRate:decoded.sampleRate,options:state.signalOptions},[decoded.samples.buffer]);
+  worker.postMessage({type:'analyze',samples:decoded.samples,sampleRate:decoded.sampleRate,options:state.signalOptions,adaptive},[decoded.samples.buffer]);
 }
 function getConfig(): SearchConfig {
   const f=state.form;
@@ -163,7 +180,7 @@ async function runMatching(): Promise<void> {
     if(!state.dataset){
       if(!state.network)throw new Error('Tillad forespørgslen til flytjenesten, eller importér lokale flydata. Din video bliver på enheden.');
       state.stage='fetching';state.progress={phase:'fetching',text:'Henter flybaner verden over ved dit tidspunkt',progress:.02};render();
-      const dataset=await fetchFlights(config,state.analysis.duration,controller.signal,(pages,flights)=>{if(id===job)updateProgress({phase:'fetching',text:`Henter globale flydata · ${pages} sider · ${flights.toLocaleString('da-DK')} flybaner`,progress:.02});});if(id!==job)return;state.dataset=dataset;
+      const dataset=await fetchFlights(config,state.analysis.duration,controller.signal,(pages,flights)=>{if(id===job)updateProgress({phase:'fetching',text:`Henter globale flydata · ${pages} sider · ${flights.toLocaleString(getLocale())} flybaner`,progress:.02});});if(id!==job)return;state.dataset=dataset;
     }
     state.stage='matching';state.progress={phase:'matching',text:`Sammenligner ${tracks.length} spor med ${state.dataset.flights.length} flybaner`,progress:.02};render();
     root.querySelector('.processing-panel')?.scrollIntoView({behavior:'smooth',block:'center'});
@@ -191,11 +208,11 @@ async function loadDemo(): Promise<void> {
 }
 function exportReport():void{
   if(!state.result||!state.config||!state.analysis)return;
-  const report={schema:'echotrace-report/2',engineVersion:'0.1.0',exportedAt:new Date().toISOString(),synthetic:state.demo||state.dataset?.synthetic,
-    disclaimer:'Experimental hypotheses, not verified locations. Scores are frequency errors, not probabilities. No calibrated position accuracy. Do not identify a person from this report.',
-    file:{name:state.file?.name,size:state.file?.size,type:state.file?.type},decoding:state.decoded,search:{mode:'global',startTime:state.config.startTime,clockUncertainty:state.config.clockUncertainty,receiverAltitudeM:state.config.receiverAltitudeM,soundSpeed:state.config.soundSpeed},
-    signal:{duration:state.analysis.duration,sampleRate:state.analysis.sampleRate,fftSize:state.analysis.fftSize,hopSize:state.analysis.hopSize,minHz:state.analysis.minHz,maxHz:state.analysis.maxHz,tracks:state.analysis.tracks,selectedTracks:state.selectedTracks,warnings:state.analysis.warnings},
-    data:{source:state.dataset?.source,license:state.dataset?.license,fetchedAt:state.dataset?.fetchedAt,flightCount:state.dataset?.flights.length,retrieval:state.dataset?.retrieval,warnings:state.dataset?.warnings},result:state.result};
+  const report={schema:'echotrace-report/2',language:getLanguage(),engineVersion:'0.1.0',exportedAt:new Date().toISOString(),synthetic:state.demo||state.dataset?.synthetic,
+    disclaimer:translateText('Eksperimentelle hypoteser, ikke bekræftede placeringer. Fejlmål er frekvensafvigelser, ikke sandsynligheder. Ingen kalibreret lokationspræcision. Brug ikke rapporten til at identificere en person.'),
+    file:{name:state.file?.name,size:state.file?.size,type:state.file?.type},decoding:state.decoded?{...state.decoded,method:translateText(state.decoded.method),warnings:state.decoded.warnings.map(translateText)}:null,search:{mode:'global',startTime:state.config.startTime,clockUncertainty:state.config.clockUncertainty,receiverAltitudeM:state.config.receiverAltitudeM,soundSpeed:state.config.soundSpeed},
+    signal:{duration:state.analysis.duration,sampleRate:state.analysis.sampleRate,fftSize:state.analysis.fftSize,hopSize:state.analysis.hopSize,resolutionAttempts:state.analysis.resolutionAttempts,minHz:state.analysis.minHz,maxHz:state.analysis.maxHz,tracks:state.analysis.tracks,selectedTracks:state.selectedTracks,warnings:state.analysis.warnings.map(translateText)},
+    data:{source:state.dataset?.source,license:state.dataset?.license,fetchedAt:state.dataset?.fetchedAt,flightCount:state.dataset?.flights.length,retrieval:state.dataset?.retrieval,warnings:state.dataset?.warnings.map(translateText)},result:{...state.result,warnings:state.result.warnings.map(translateText)}};
   const url=URL.createObjectURL(new Blob([JSON.stringify(report,null,2)],{type:'application/json'}));
   const a=document.createElement('a');a.href=url;a.download=`echotrace-${new Date().toISOString().slice(0,10)}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   toast('Rapporten indeholder tid og kandidatområder. Del den med omtanke.');
@@ -227,14 +244,15 @@ function signalAction(action:string):void {
       const fftSize=value('signal-fft'),minHz=value('signal-min'),maxHz=value('signal-max');
       if(![8192,16384,32768].includes(fftSize)||![minHz,maxHz].every(Number.isFinite)||minHz<20||maxHz>2000||maxHz-minHz<20)throw new Error('Vælg et analysebånd inden for 20–2000 Hz, mindst 20 Hz bredt.');
       stopJob();state.signalOptions={fftSize,minHz,maxHz};invalidateResult();state.stage='analyzing';state.progress={phase:'spectrum',text:'Genanalyserer den lokale lyd',progress:.01};render();
-      runSignalWorker({...state.decoded,samples:pcm.slice()},job);return;
+      runSignalWorker({...state.decoded,samples:pcm.slice()},job,false);return;
     }
     render();
   }catch(error){toast(error instanceof Error?error.message:'Kontrollér lydindstillingerne.');}
 }
 root.addEventListener('click',e=>{
-  const target=(e.target as Element).closest<HTMLElement>('[data-action],[data-scroll],[data-candidate],[data-track-zoom],[data-track-delete]');if(!target)return;
+  const target=(e.target as Element).closest<HTMLElement>('[data-action],[data-scroll],[data-candidate],[data-track-zoom],[data-track-delete],[data-language]');if(!target)return;
   if(target.hasAttribute('disabled'))return;
+  if(target.dataset.language==='da'||target.dataset.language==='en'){changeLanguage(target.dataset.language);return;}
   if(target.closest('#signal-controls')){
     if(isBusy(state))return;
     if(target.dataset.trackZoom&&state.analysis){

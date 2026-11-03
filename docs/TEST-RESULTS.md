@@ -102,6 +102,16 @@ Kør demoen over HTTPS, prøv en egen lille understøttet fil, kontrollér netv�
 - Ingen browserlogs blev rapporteret under de kontrollerede forløb. Ingen horisontal overflow ved den kontrollerede viewport på 1021 CSS-pixel. Fysiske mobiler er ikke testet i denne opdatering.
 - Ingen geolokationsvalidering på ophavsmandens rå optagelse eller andre uafhængigt sted-/tidsbestemte virkelige optagelser. Globale data, terrænhøjder og heldagssøgning er fortsat ikke implementeret.
 
+## Frisk MOV-optagelse og automatisk opløsningsvalg · 3. november 2026
+
+- En brugerleveret MOV på 30,601 sekunder blev afkodet lokalt og prøvet gennem den rigtige browser-worker. Ved FFT 8.192, 16.384 og 32.768 fandt browseranalysen ingen brugbare automatiske spor. Ingen lokationskonklusion blev produceret.
+- En separat lokal Core Audio-afkodning gav et svagt kurveforslag ved høj opløsning, som ikke blev genfundet gennem browserafkodningen. Det er ikke et robust eller bekræftet flyfund.
+- Første analyse prøver nu højere FFT-opløsning, hvis første forsøg er tomt. Manuel genanalyse respekterer den valgte opløsning uden automatiske ekstra forsøg. Den højeste afprøvede opløsning vises, hvis alle forsøg er tomme.
+- Finere FFT-vinduer kan også finde tilfældige stier gennem støj. Automatisk sporing kræver nu mindst 75% målepunkter inden for passagen og begrænser samlet frekvensvariation til to gange nettosænkningen. Kurver med store reverseringer kan derfor kræve manuel inspektion.
+- Nye syntetiske tests kontrollerer en kendt svag faldende tone i støj, støj/stilhed gennem de automatiske ekstra forsøg og uændret demo uden ekstra forsøg. Ingen privat optagelse er tilføjet som testfixture.
+- `npm run check`: TypeScript, build og **31 tests bestået**.
+- API'ets `/data-range` svarede ved kontrollen med sidste dato 2026-11-02. Det er en separat databegrænsning for en optagelse fra 2026-11-03, ikke årsagen til manglende spor i selve lydanalysen.
+
 ## Global kandidatsøgning fra tidspunkt · 3. november 2026
 
 - Brugeren angiver UTC-starttid uden koordinater, land eller radius. Demoen bruger global kandidatsøgning; den medfølgende kendte lokation tilføres ikke matcheren.
@@ -109,6 +119,16 @@ Kør demoen over HTTPS, prøv en egen lille understøttet fil, kontrollér netv�
 - Et livekald den 3. november returnerede to historiske flybaner uden geografisk filter samt `access-control-allow-origin: *`. Arkivet angav 2025-04-28 til 2026-11-02. Hentning af hele det globale udsnit er ikke belastningstestet.
 - Syntetisk test med 200 flybaner spredt over verden afsøgte alle 200 og undersøgte 64 områder på cirka 3,8 sekunder på udviklingsmaskinen. Det er ikke et løfte om runtime på reelle globale data eller mobiler.
 - Lokal browserkontrol: demoen gennemfører, resultatkortet vises, og søgeformularen har ét datofelt og ingen koordinat-/radiusfelter. Der er ingen uafhængig real-world-lokationsvalidering.
+
+## Brugerleveret klip med jetfly · 3. november 2026
+
+En MP4 på 23,102 sekunder med et synligt jetfly blev undersøgt, fordi hørbar flylyd ikke gav automatiske kurver. Begge lydkanaler blev afkodet lokalt ved 8 kHz og prøvet med FFT 8.192, 16.384 og 32.768 i 20–2000 Hz: nul accepterede tonale spor. Et separat spektrogram af 22,05 kHz-lyd blev visuelt undersøgt op til cirka 10 kHz med kortere vindue. Der er betydelig lydenergi og brede støjbånd, men ingen dokumenteret stabil tone, der kan bære den nuværende lokaliseringsmodel.
+
+Afvisningsdiagnostik viser korte, spredte eller stigende spektrale stier frem for et tilstrækkeligt sammenhængende faldende tonalt spor. Det er ikke en klassifikation af flyets identitet eller et bevis på, at ingen flytone findes. Filen blev også prøvet i den rigtige browser-worker: nul kurveforslag efter alle tre opløsninger og en deaktiveret lokationssøgning. Ingen koordinater blev konstrueret.
+
+Brugerfladen siger nu “Lyd registreret · ingen brugbare Dopplerkurver” og forklarer forskellen mellem hørbar flystøj og det målbare grundlag for denne model. Forside og metode beskriver udtrykkeligt, at appen ikke er en generel flylydsklassifikator. Det er en rettelse af produktets forklaring, ikke implementering eller validering af lokalisering fra bredbåndet jetstøj.
+
+`npm run check` bestod med **47 tests** i det aktuelle fælles checkout, inklusive de eksisterende signal-, globale søge- og afspilningstests. Ingen af brugerens rå optagelser blev tilføjet som repository-fixtures.
 
 ## Synkroniseret afspilning og nyt logo · 3. november 2026
 

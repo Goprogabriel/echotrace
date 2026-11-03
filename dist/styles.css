@@ -72,3 +72,7 @@ body{background-image:radial-gradient(ellipse at 90% 0,#26387924,transparent 45%
 @media(max-width:650px){.brand-mark{width:34px;height:34px;border-radius:10px}.brand-mark svg{width:32px;height:32px}.logo{gap:8px}.brand-word{font-size:21px}.playback-readout{font-size:10px}}
 
 .signal-outcome{padding:14px;border:1px solid var(--line-strong);border-radius:8px;background:var(--panel-soft);margin-bottom:14px}.signal-outcome strong{display:block;font-size:13px;line-height:1.5}.signal-outcome p{font-size:12px;line-height:1.7;margin:8px 0}.signal-outcome .text-link{font-size:12px}
+
+.header-actions{display:flex;align-items:center;gap:12px;flex-shrink:0}.language-switch{display:flex;border:1px solid var(--line-strong);border-radius:7px;padding:2px;gap:2px}.language-switch button{background:transparent;border:0;border-radius:4px;padding:5px 7px;font-size:11px;line-height:1.5;color:var(--muted)}.language-switch button[aria-pressed="true"]{background:var(--lime);color:var(--bg);font-weight:650}.language-switch button:hover{color:var(--text);background:var(--line)}@media(max-width:650px){.header-actions{gap:7px}.header-actions>.btn{padding:9px}.header-actions>.btn span{display:none}.language-switch button{padding:4px 6px}.header-inner{gap:8px}}
+
+.language-switch button[aria-pressed="true"]:hover{background:var(--lime);color:var(--bg)}

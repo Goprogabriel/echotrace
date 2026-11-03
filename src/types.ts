@@ -8,6 +8,7 @@ export interface Ridge {
 export interface SignalOptions { fftSize: number; minHz: number; maxHz: number }
 export interface SpectrumView { start: number; end: number; minHz: number; maxHz: number; gain: number }
 export interface SignalAnalysis {
+  resolutionAttempts?: number[];
   duration: number; sampleRate: number; fftSize: number; hopSize: number;
   frames: number; bins: number; minHz: number; maxHz: number;
   db: Float32Array; waveform: Float32Array; tracks: Ridge[];

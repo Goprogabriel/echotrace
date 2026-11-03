@@ -1,3 +1,4 @@
+import {translateTree} from '../i18n.js';
 import type {Candidate, Flight, GridCell, SearchConfig} from '../types.js';
 import {clamp} from '../core/math.js';
 import {icon} from './ui.js';
@@ -123,8 +124,8 @@ export function mountMap(container: HTMLElement, options: MapOptions): ()=>void 
   container.querySelector<HTMLInputElement>('[data-map="tiles"]')!.addEventListener('change',e=>{
     enabled=(e.target as HTMLInputElement).checked;mapTilesEnabled=enabled;tileError.hidden=true;tileKey='';if(!enabled)tiles.replaceChildren();
     container.querySelector('.map-attribution')!.innerHTML=enabled?'© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap-bidragsydere</a>':'Geografisk grid · træk for at flytte';
-    draw();
+    translateTree(container);draw();
   });
-  const observer=new ResizeObserver(()=>draw());observer.observe(container);fit();
+  const observer=new ResizeObserver(()=>draw());observer.observe(container);fit();translateTree(container);
   return()=>{observer.disconnect();canvas.onpointerdown=null;canvas.onpointermove=null;canvas.onpointerup=null;canvas.onkeydown=null;canvas.onpointercancel=null;canvas.removeEventListener('wheel',wheel);tiles.replaceChildren();};
 }

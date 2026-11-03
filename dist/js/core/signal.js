@@ -1,5 +1,31 @@
 import { clamp, fft, median } from './math.js';
 export const DEFAULT_SIGNAL_OPTIONS = { fftSize: 8192, minHz: 30, maxHz: 1000 };
+/** Try finer frequency resolution only when the initial automatic pass found nothing.
+ * Manual reanalysis uses analyzeSignal directly and keeps the user's exact FFT choice.
+ */
+export function analyzeSignalAdaptive(samples, sampleRate, progress = () => { }, options = DEFAULT_SIGNAL_OPTIONS) {
+    const initial = analyzeSignal(samples, sampleRate, progress, options);
+    initial.resolutionAttempts = [options.fftSize];
+    if (initial.tracks.length)
+        return initial;
+    let last = initial;
+    const attempts = [options.fftSize];
+    for (const fftSize of [16384, 32768].filter(size => size > options.fftSize)) {
+        // Keep at least 25 overlapping observations available for the detector.
+        if (samples.length < fftSize * 4)
+            continue;
+        attempts.push(fftSize);
+        const result = analyzeSignal(samples, sampleRate, p => progress({ ...p, text: `Ny søgning med FFT ${fftSize.toLocaleString('da-DK')} · ${p.text}` }), { ...options, fftSize });
+        result.resolutionAttempts = [...attempts];
+        if (result.tracks.length) {
+            result.warnings.unshift(`Standardopløsningen fandt ingen spor. FFT ${fftSize.toLocaleString('da-DK')} gav ${result.tracks.length} automatisk(e) kurveforslag. Kontrollér kurven visuelt; det er ikke en bekræftet flypassage.`);
+            return result;
+        }
+        last = result;
+    }
+    last.warnings.unshift(`Ingen automatiske spor ved FFT ${attempts.map(size => size.toLocaleString('da-DK')).join(', ')}. Zoom ind og undersøg lyden; en optagelse indeholder ikke nødvendigvis en målbar flykurve.`);
+    return last;
+}
 /** Deterministic STFT + continuity-constrained tonal-ridge extraction. NOT an aircraft classifier. */
 export function analyzeSignal(samples, sampleRate, progress = () => { }, options = DEFAULT_SIGNAL_OPTIONS) {
     if (!Number.isFinite(sampleRate) || sampleRate < 2000 || sampleRate > 192000)
@@ -146,7 +172,13 @@ function extractRidges(db, frames, bins, lo, sr, n, hop) {
             const fifth = Math.max(4, Math.floor(points.length / 5));
             const first = median(points.slice(0, fifth).map(p => p.hz)), last = median(points.slice(-fifth).map(p => p.hz));
             const drift = first - last, span = points.at(-1).t - points[0].t;
-            if (span < 8 || points.length / (span * sr / hop + 1) < .6 || drift < Math.max(3.5, first * .025))
+            if (span < 8 || points.length / (span * sr / hop + 1) < .75 || drift < Math.max(3.5, first * .025))
+                continue;
+            // Reject wandering paths assembled from random peaks at finer FFT resolutions.
+            // Curves with substantial reversals need visual inspection/manual tracing.
+            const totalVariation = points.slice(1).reduce((sum, p, i) => sum + Math.abs(p.hz - points[i].hz), 0);
+            const netFall = points[0].hz - points.at(-1).hz;
+            if (netFall <= 0 || totalVariation > 2 * netFall)
                 continue;
             // Reject very jumpy tracks and near-identical harmonic copies. This is a heuristic, not ground truth.
             const jumps = points.slice(1).filter((p, i) => Math.abs(p.hz - points[i].hz) / Math.max(.1, p.t - points[i].t) > 35).length;

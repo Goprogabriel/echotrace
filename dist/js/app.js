@@ -1,3 +1,4 @@
+import { getLanguage, getLocale, languageFromUrl, languageUrl, setLanguage, translateText, translateTree } from './i18n.js';
 import { homePage } from './pages/home.js';
 import { labPage } from './pages/lab.js';
 import { docsPage } from './pages/docs.js';
@@ -9,18 +10,21 @@ import { drawIllustrationSpectrum, drawSpectrogram, drawWaveform, startHeroCanva
 import { manualRidge } from './core/signal.js';
 import { bindPlayback } from './components/playback.js';
 import { mountMap } from './components/map.js';
+setLanguage(languageFromUrl(location.href));
 const root = document.querySelector('#app');
 const fileInput = document.querySelector('#media-input');
 const dataInput = document.querySelector('#data-input');
 let state = initialState(), cleanups = [];
 let worker = null, controller = new AbortController(), job = 0;
+let currentToast = '';
 let toastTimer;
 let pcm = null;
 let playback = { url: '', time: 0, playing: false };
 const route = () => location.hash.split('?')[0] || '#/';
 function toast(message) {
+    currentToast = message;
     const el = document.querySelector('#toast');
-    el.textContent = message;
+    el.textContent = translateText(message);
     el.classList.add('show');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => el.classList.remove('show'), 5500);
@@ -55,6 +59,33 @@ function render() {
         };
     if (r === '#/lab')
         initLab();
+    document.documentElement.lang = getLanguage();
+    document.title = translateText(document.title);
+    const description = document.querySelector('meta[name="description"]');
+    if (description) {
+        const source = description.dataset.source || description.content;
+        description.dataset.source = source;
+        description.content = translateText(source);
+    }
+    document.querySelector('#toast').textContent = currentToast;
+    translateTree(document.body);
+}
+function changeLanguage(language) {
+    const fields = Array.from(root.querySelectorAll('input[name],select[name]'), el => ({ name: el.name, value: el.value, checked: el instanceof HTMLInputElement ? el.checked : false }));
+    const details = Array.from(root.querySelectorAll('details'), el => el.open);
+    setLanguage(language);
+    history.replaceState(null, '', languageUrl(location.href, language));
+    render();
+    for (const field of fields) {
+        const el = Array.from(root.querySelectorAll('input[name],select[name]')).find(el => el.name === field.name);
+        if (el) {
+            el.value = field.value;
+            if (el instanceof HTMLInputElement)
+                el.checked = field.checked;
+        }
+    }
+    root.querySelectorAll('details').forEach((el, i) => el.open = details[i] || false);
+    root.querySelector(`[data-language="${language}"]`)?.focus({ preventScroll: true });
 }
 function initLab() {
     const draw = () => {
@@ -114,7 +145,7 @@ function updateProgress(progress) {
     state.progress = progress;
     const text = root.querySelector('#progress-text');
     if (text)
-        text.textContent = progress.text;
+        text.textContent = translateText(progress.text);
     const number = root.querySelector('#progress-percent');
     if (number)
         number.textContent = `${Math.round(progress.progress * 100)}%`;
@@ -196,7 +227,7 @@ async function analyzeFile(file, demo, capture = false) {
         fail(error, id);
     }
 }
-function runSignalWorker(decoded, id) {
+function runSignalWorker(decoded, id, adaptive = true) {
     worker = new Worker(new URL('./workers/analysis.worker.js', import.meta.url), { type: 'module' });
     worker.onerror = () => fail(new Error('Analysearbejderen kunne ikke startes. Åbn appen via localhost eller HTTPS — ikke direkte som en file://-fil.'), id);
     worker.onmessage = (e) => {
@@ -208,6 +239,7 @@ function runSignalWorker(decoded, id) {
             fail(new Error(e.data.message), id);
         if (e.data.type === 'analysis') {
             state.analysis = e.data.data;
+            state.signalOptions.fftSize = state.analysis.fftSize;
             state.selectedTracks = state.analysis.tracks.slice(0, 3).map(t => t.id);
             state.spectrumView = { start: 0, end: state.analysis.duration, minHz: state.analysis.minHz, maxHz: state.analysis.maxHz, gain: 0 };
             state.anchors = [];
@@ -222,7 +254,7 @@ function runSignalWorker(decoded, id) {
                 root.querySelector('#search-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
     };
-    worker.postMessage({ type: 'analyze', samples: decoded.samples, sampleRate: decoded.sampleRate, options: state.signalOptions }, [decoded.samples.buffer]);
+    worker.postMessage({ type: 'analyze', samples: decoded.samples, sampleRate: decoded.sampleRate, options: state.signalOptions, adaptive }, [decoded.samples.buffer]);
 }
 function getConfig() {
     const f = state.form;
@@ -262,7 +294,7 @@ async function runMatching() {
             state.progress = { phase: 'fetching', text: 'Henter flybaner verden over ved dit tidspunkt', progress: .02 };
             render();
             const dataset = await fetchFlights(config, state.analysis.duration, controller.signal, (pages, flights) => { if (id === job)
-                updateProgress({ phase: 'fetching', text: `Henter globale flydata · ${pages} sider · ${flights.toLocaleString('da-DK')} flybaner`, progress: .02 }); });
+                updateProgress({ phase: 'fetching', text: `Henter globale flydata · ${pages} sider · ${flights.toLocaleString(getLocale())} flybaner`, progress: .02 }); });
             if (id !== job)
                 return;
             state.dataset = dataset;
@@ -311,11 +343,11 @@ async function loadDemo() {
 function exportReport() {
     if (!state.result || !state.config || !state.analysis)
         return;
-    const report = { schema: 'echotrace-report/2', engineVersion: '0.1.0', exportedAt: new Date().toISOString(), synthetic: state.demo || state.dataset?.synthetic,
-        disclaimer: 'Experimental hypotheses, not verified locations. Scores are frequency errors, not probabilities. No calibrated position accuracy. Do not identify a person from this report.',
-        file: { name: state.file?.name, size: state.file?.size, type: state.file?.type }, decoding: state.decoded, search: { mode: 'global', startTime: state.config.startTime, clockUncertainty: state.config.clockUncertainty, receiverAltitudeM: state.config.receiverAltitudeM, soundSpeed: state.config.soundSpeed },
-        signal: { duration: state.analysis.duration, sampleRate: state.analysis.sampleRate, fftSize: state.analysis.fftSize, hopSize: state.analysis.hopSize, minHz: state.analysis.minHz, maxHz: state.analysis.maxHz, tracks: state.analysis.tracks, selectedTracks: state.selectedTracks, warnings: state.analysis.warnings },
-        data: { source: state.dataset?.source, license: state.dataset?.license, fetchedAt: state.dataset?.fetchedAt, flightCount: state.dataset?.flights.length, retrieval: state.dataset?.retrieval, warnings: state.dataset?.warnings }, result: state.result };
+    const report = { schema: 'echotrace-report/2', language: getLanguage(), engineVersion: '0.1.0', exportedAt: new Date().toISOString(), synthetic: state.demo || state.dataset?.synthetic,
+        disclaimer: translateText('Eksperimentelle hypoteser, ikke bekræftede placeringer. Fejlmål er frekvensafvigelser, ikke sandsynligheder. Ingen kalibreret lokationspræcision. Brug ikke rapporten til at identificere en person.'),
+        file: { name: state.file?.name, size: state.file?.size, type: state.file?.type }, decoding: state.decoded ? { ...state.decoded, method: translateText(state.decoded.method), warnings: state.decoded.warnings.map(translateText) } : null, search: { mode: 'global', startTime: state.config.startTime, clockUncertainty: state.config.clockUncertainty, receiverAltitudeM: state.config.receiverAltitudeM, soundSpeed: state.config.soundSpeed },
+        signal: { duration: state.analysis.duration, sampleRate: state.analysis.sampleRate, fftSize: state.analysis.fftSize, hopSize: state.analysis.hopSize, resolutionAttempts: state.analysis.resolutionAttempts, minHz: state.analysis.minHz, maxHz: state.analysis.maxHz, tracks: state.analysis.tracks, selectedTracks: state.selectedTracks, warnings: state.analysis.warnings.map(translateText) },
+        data: { source: state.dataset?.source, license: state.dataset?.license, fetchedAt: state.dataset?.fetchedAt, flightCount: state.dataset?.flights.length, retrieval: state.dataset?.retrieval, warnings: state.dataset?.warnings.map(translateText) }, result: { ...state.result, warnings: state.result.warnings.map(translateText) } };
     const url = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }));
     const a = document.createElement('a');
     a.href = url;
@@ -377,7 +409,7 @@ function signalAction(action) {
             state.stage = 'analyzing';
             state.progress = { phase: 'spectrum', text: 'Genanalyserer den lokale lyd', progress: .01 };
             render();
-            runSignalWorker({ ...state.decoded, samples: pcm.slice() }, job);
+            runSignalWorker({ ...state.decoded, samples: pcm.slice() }, job, false);
             return;
         }
         render();
@@ -387,11 +419,15 @@ function signalAction(action) {
     }
 }
 root.addEventListener('click', e => {
-    const target = e.target.closest('[data-action],[data-scroll],[data-candidate],[data-track-zoom],[data-track-delete]');
+    const target = e.target.closest('[data-action],[data-scroll],[data-candidate],[data-track-zoom],[data-track-delete],[data-language]');
     if (!target)
         return;
     if (target.hasAttribute('disabled'))
         return;
+    if (target.dataset.language === 'da' || target.dataset.language === 'en') {
+        changeLanguage(target.dataset.language);
+        return;
+    }
     if (target.closest('#signal-controls')) {
         if (isBusy(state))
             return;

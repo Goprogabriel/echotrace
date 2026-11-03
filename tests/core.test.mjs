@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {fft,haversine,offsetPosition} from '../dist/js/core/math.js';
-import {analyzeSignal,manualRidge} from '../dist/js/core/signal.js';
+import {analyzeSignal,analyzeSignalAdaptive,manualRidge} from '../dist/js/core/signal.js';
 import {dopplerFactor,ecef,prepareFlight,interpolate} from '../dist/js/core/physics.js';
 import {matchFlights} from '../dist/js/core/matcher.js';
 import {parseDataset,parseCsv,parseProvider,epochSeconds,buildQuery} from '../dist/js/core/data.js';
@@ -89,4 +89,32 @@ test('Manual tracing retains measured anchors, absolute audio times and provenan
 test('Matcher refuses more than three selected tracks instead of silently dropping events',()=>{
   analysis??=analyzeSignal(wav(),8000);
   assert.throws(()=>matchFlights([...analysis.tracks,...analysis.tracks],dataset.flights,config),/højst tre/);
+});
+
+test('Adaptive resolution finds a weak known falling tone without relaxing detection rules',()=>{
+  let seed=1090,phase=0;
+  const pcm=Float32Array.from({length:8000*30},(_,i)=>{
+    seed=(1664525*seed+1013904223)>>>0;
+    phase+=2*Math.PI*(150-12*i/(8000*30))/8000;
+    return(seed/4294967296-.5)*.05+.0008*Math.sin(phase);
+  });
+  assert.equal(analyzeSignal(pcm,8000).tracks.length,0);
+  const a=analyzeSignalAdaptive(pcm,8000);
+  assert.equal(a.fftSize,16384);assert.deepEqual(a.resolutionAttempts,[8192,16384]);
+  assert.equal(a.tracks.length,1);
+  const points=a.tracks[0].points;
+  assert(Math.sqrt(points.reduce((s,p)=>s+(p.hz-(150-.4*p.t))**2,0)/points.length)<.5);
+});
+test('Adaptive passes do not turn a seeded noise path or silence into a tonal event',()=>{
+  let seed=1090;
+  const noise=Float32Array.from({length:8000*30},()=>{seed=(1664525*seed+1013904223)>>>0;return(seed/4294967296-.5)*.05;});
+  for(const pcm of [noise,new Float32Array(8000*10)]){
+    const a=analyzeSignalAdaptive(pcm,8000);assert.equal(a.tracks.length,0);
+    assert(a.warnings.some(w=>w.includes('Ingen automatiske spor ved FFT')));
+    assert.equal(a.fftSize,a.resolutionAttempts.at(-1));
+  }
+});
+test('Adaptive analysis preserves an already detected demo without extra FFT attempts',()=>{
+  const a=analyzeSignalAdaptive(wav(),8000);
+  assert.equal(a.tracks.length,2);assert.deepEqual(a.resolutionAttempts,[8192]);
 });

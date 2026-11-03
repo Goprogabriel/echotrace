@@ -73,3 +73,17 @@ Primær kilde: [I discovered a sound that leaks your exact location (and it’s 
 - **22:53–24:29:** I en alternativ søgning bruges cirka ét minuts lyd med kendt tidspunkt og en manuelt optegnet kurve. Hans første eksempel havde kun kendt dag og to passager; præcist klokkeslæt er derfor ikke et generelt fysisk krav. Denne app kræver UTC-starttiden og finder selv mulige områder gennem global kandidatsøgning.
 
 Denne opdatering forbedrer lydarbejdet og lokal kurvetilpasning. Automatisk terrænhøjde, typeklassifikation, udtømmende lands-/verdenssøgning, heldagssøgning, silence-filter og egen historisk datalagring er ikke implementeret. Flydataindlæsningen henter nu det globale tidsudsnit via tidsfilter og begrænset pagination. Lange klip kan bruge meget hukommelse under selve browserafkodningen, selv om spektrogrammets celleantal er begrænset.
+
+### Automatisk genforsøg ved tom lydanalyse
+
+Første indlæsning prøver 16.384 og derefter 32.768 FFT-punkter, hvis den oprindelige opløsning ikke giver spor, og klippet er langt nok til mindst 25 overlappende observationer. Første brugbare resultat beholdes. Hvis ingen opløsning giver spor, vises den højeste afprøvede opløsning og en tydelig forklaring; der konstrueres ingen placering fra et tomt resultat. Den manuelle knap til genanalyse holder sig til brugerens præcise FFT-valg.
+
+For at begrænse tilfældige stier gennem lokale støjtoppe kræver et automatisk spor mindst 75% dækning inden for passagen og samlet frekvensvariation højst to gange nettosænkningen. Disse er stadig heuristiske filtre, ikke statistisk validerede sandsynligheder. Ikke-monotone rigtige passager kan blive afvist og skal undersøges manuelt. De afprøvede opløsninger gemmes i rapportens `resolutionAttempts`.
+
+### Hørbar flylyd er ikke i sig selv en lokaliseringsmåling
+
+Denne implementation følger en smal, vedvarende tone. Den har ikke en generel lydklassifikator, der genkender flylyde ud fra hele optagelsen. En kraftig overflyvning kan derfor være hørbar og synlig på videoen, mens algoritmen afviser alle tonale kurveforslag. Bredt fordelt støj kan ikke omdannes til et målt frekvensspor ved blot at tegne en faldende linje gennem spektrogrammet.
+
+Jet- og propelmotorer kan begge have tonale og bredbåndede komponenter. Det afgørende for denne metode er, om den konkrete optagelse har en adskillelig tone, hvis udvikling kan måles. NASA beskriver eksempelvis både tone- og bredbåndsstøj fra rotor/stator-interaktion: https://www1.grc.nasa.gov/aeronautics/acoustics/instrumentation/hotwire-hotfilm-and-laser-doppler-velocimetry/ . I colstos inspirationsvideo filtreres kendte jettyper fra før kandidatsøgningen omkring 3:35–4:13. Demonstrationen er derfor ikke en validering af generel lokalisering fra enhver tydelig flylyd.
+
+Generel flylydsgenkendelse og lokalisering er forskellige opgaver. En eventuel fremtidig klassifikator kan foreslå, at et klip indeholder flystøj, men det giver ikke i sig selv en position. Lokalisering af klip uden stabile tonale spor kræver en anden fysisk måling/model og selvstændig validering. Denne opdatering implementerer ikke en sådan model.

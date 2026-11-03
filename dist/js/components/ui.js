@@ -1,3 +1,4 @@
+import { getLanguage, getLocale } from '../i18n.js';
 export const esc = (value) => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const icons = {
     upload: '<path d="M12 16V3m-5 5 5-5 5 5M4 15v5a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5"/>',
@@ -33,7 +34,7 @@ export function logo() {
     return `<a href="#/" class="logo" aria-label="Echotrace — forside"><span class="brand-mark" aria-hidden="true"><svg width="38" height="38" viewBox="0 0 38 38" fill="none"><path class="brand-orbit" d="M29.7 9.7a14 14 0 1 0 0 18.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path class="brand-echo" d="M25.5 13.2a8.7 8.7 0 1 0 0 11.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path class="brand-wave" d="M10 19h4l2.5-7 4 14 3.5-18 3 15 2-4H34" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/></svg></span><span class="brand-word">echo<span>trace</span></span></a>`;
 }
 export function header(lab = false) {
-    return `<header class="site-header"><div class="header-inner">${logo()}<nav aria-label="Hovedmenu">${lab ? '<a href="#/" class="nav-back">Til forsiden</a><a href="#/method">Metoden</a>' : '<button data-scroll="how">Sådan virker det</button><a href="#/method">Metoden</a><a href="#/privacy">Privatliv</a>'}</nav><button class="btn btn-primary btn-small" data-action="upload">${icon('upload')}<span>Analyser video</span></button></div></header>`;
+    return `<header class="site-header"><div class="header-inner">${logo()}<nav aria-label="Hovedmenu">${lab ? '<a href="#/" class="nav-back">Til forsiden</a><a href="#/method">Metoden</a>' : '<button data-scroll="how">Sådan virker det</button><a href="#/method">Metoden</a><a href="#/privacy">Privatliv</a>'}</nav><div class="header-actions"><div class="language-switch" role="group" aria-label="Sprog"><button type="button" data-language="da" lang="da" aria-label="Skift til dansk" aria-pressed="${getLanguage() === 'da'}">DA</button><button type="button" data-language="en" lang="en" aria-label="Skift til engelsk" aria-pressed="${getLanguage() === 'en'}">EN</button></div><button class="btn btn-primary btn-small" data-action="upload" aria-label="Analyser video">${icon('upload')}<span>Analyser video</span></button></div></div></header>`;
 }
 export function footer() {
     return `<footer class="site-footer">${logo()}<nav aria-label="Sideinformation"><a href="#/method">Metoden</a><a href="#/privacy">Privatliv</a><a href="https://github.com/Goprogabriel/echotrace" target="_blank" rel="noopener noreferrer">GitHub</a></nav></footer>`;
@@ -42,7 +43,7 @@ export function field(label, name, value, props = '', help = '') {
     return `<label class="field"><span>${label}</span><input name="${name}" value="${esc(value)}" ${props}>${help ? `<small>${help}</small>` : ''}</label>`;
 }
 export const seconds = (value) => `${Math.floor(value / 60).toString().padStart(2, '0')}:${Math.floor(value % 60).toString().padStart(2, '0')}`;
-export const formatUTC = (t) => `${new Date(t * 1000).toLocaleString('da-DK', { timeZone: 'UTC', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })} UTC`;
+export const formatUTC = (t) => `${new Date(t * 1000).toLocaleString(getLocale(), { timeZone: 'UTC', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })} UTC`;
 export function startReveals(root = document) {
     const observer = new IntersectionObserver(entries => entries.forEach(entry => {
         if (entry.isIntersecting) {

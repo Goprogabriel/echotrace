@@ -1,3 +1,4 @@
+import {translateText} from '../i18n.js';
 import {clamp} from '../core/math.js';
 
 interface TimelinePlot {
@@ -31,7 +32,7 @@ export function bindPlayback(media: HTMLMediaElement, options: PlaybackOptions):
     const canvas = plot.canvas, oldRole = canvas.getAttribute('role'), oldTab = canvas.getAttribute('tabindex');
     canvas.setAttribute('role', 'slider'); canvas.tabIndex = 0;
     canvas.setAttribute('aria-valuemin', '0');
-    canvas.title = 'Klik eller træk for at spole. Piletaster: 1 sekund. Shift + piletast: 10 sekunder. Rul vandret eller Shift + rul for at spole.';
+    canvas.title = translateText('Klik eller træk for at spole. Piletaster: 1 sekund. Shift + piletast: 10 sekunder. Rul vandret eller Shift + rul for at spole.');
     let pointer: number | null = null;
     const seek = (time: number): void => {
       if (!options.canSeek() || media.readyState < 1 || !Number.isFinite(media.duration)) return;
@@ -88,9 +89,9 @@ export function bindPlayback(media: HTMLMediaElement, options: PlaybackOptions):
       cursor.dataset.time = String(time);
       const outside = time < range.start || time > range.end;
       cursor.classList.toggle('outside-window', outside); cursor.classList.toggle('label-left', ratio > .7);
-      label.textContent = `${stamp}${outside ? ' · uden for udsnit' : ''}`;
+      label.textContent = `${stamp}${outside ? translateText(' · uden for udsnit') : ''}`;
       canvas.setAttribute('aria-valuemax', String(duration)); canvas.setAttribute('aria-valuenow', String(time));
-      canvas.setAttribute('aria-valuetext', `${stamp} af ${formatPlaybackTime(duration)}`);
+      canvas.setAttribute('aria-valuetext', `${stamp} ${translateText('af')} ${formatPlaybackTime(duration)}`);
       canvas.setAttribute('aria-disabled', String(!options.canSeek()));
     }
     if (media.readyState >= 1) options.onPosition(time, !media.paused && !media.ended);
