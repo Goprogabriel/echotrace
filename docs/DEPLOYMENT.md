@@ -67,3 +67,10 @@ Ved behov for en anden dataleverandør er `src/core/data.ts` adaptergrænsen. En
 **Mangler Node/Python:** installér ét af dem, eller publicér `dist/` på en statisk host. Hjemmesiden kræver ikke, at hver besøgende installerer noget.
 
 **Mac blokerer .command:** brug terminalen og `node scripts/serve.mjs --open`. Følg operativsystemets normale sikkerhedsdialoger frem for at slå beskyttelse fra.
+
+
+## Cache og sammenhængende versioner
+
+Builden lægger en indholdsadresseret kopi af browsermoduler, Workers og CSS under `dist/runtime/<hash>/`. HTML-entrypointet refererer til denne version, så en ny version får nye URL’er for hele modultræet. Det forhindrer, at en opdateret app bruger gamle imports eller en gammel Worker fra browserens cache. `dist/js/` og `dist/styles.css` bevares til tests og kildeinspektion; produktionssiden bruger runtime-kopien. Hele `dist/` skal distribueres samlet.
+
+Hashen afhænger af modulernes og CSS-filens indhold, ikke tidspunktet for build. Der er ingen service worker, database eller klientlagring. En allerede åben side skal stadig genindlæses for at skifte til en ny version.

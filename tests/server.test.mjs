@@ -26,7 +26,20 @@ test('Static server: page, module MIME, byte range, security headers and no uplo
   const index = await fetch(base); assert.equal(index.status, 200);
   assert.equal(index.headers.get('x-content-type-options'), 'nosniff');
   assert.match(index.headers.get('permissions-policy'), /microphone=\(\)/);
-  assert.match(await index.text(), /Content-Security-Policy/);
+  const html=await index.text();assert.match(html,/Content-Security-Policy/);
+  const script=html.match(/src="(\.\/runtime\/[a-f0-9]{16}\/js\/app\.js)"/);assert(script,'HTML must use a versioned entry point');
+  const entry=new URL(script[1],base+'/'),prefix=entry.pathname.replace(/\/js\/app\.js$/,'');
+  const pending=[entry],visited=new Set();
+  while(pending.length){
+    const url=pending.shift();if(visited.has(url.href))continue;visited.add(url.href);
+    assert(url.pathname.startsWith(prefix+'/js/'),'Every import and worker belongs to the same build');
+    const response=await fetch(url);assert.equal(response.status,200,url.href);assert.match(response.headers.get('content-type'),/text\/javascript/);
+    const source=await response.text();
+    for(const match of source.matchAll(/(?:from\s*|new URL\()\s*['"](\.{1,2}\/[^'"]+\.js)['"]/g))pending.push(new URL(match[1],url));
+  }
+  assert([...visited].some(url=>url.endsWith('/workers/analysis.worker.js')));
+  assert([...visited].some(url=>url.endsWith('/workers/capture-worklet.js')));
+  const css=await fetch(base+prefix+'/styles.css');assert.equal(css.status,200);assert.match(css.headers.get('content-type'),/text\/css/);
   const module = await fetch(`${base}/js/app.js`); assert.equal(module.status, 200);
   assert.match(module.headers.get('content-type'), /text\/javascript/);
   const video = await fetch(`${base}/assets/demo.mp4`, {headers: {Range: 'bytes=0-99'}});

@@ -195,3 +195,8 @@ Browserkontrol af denne version: den syntetiske demo giver 493 målevinduer pr. 
 Browserkontrol: den syntetiske demo er gennemført ved følsomhed 0, 50 og 100. Ved ændring bliver den gamle resultatvisning fjernet og søgeknappen deaktiveret, indtil ny analyse er gennemført. Dansk/engelsk skift bevarer indstillingen og viser de tilsvarende krav. Browserens eksporterede rapport er læst tilbage: signalanalyse, søgning, fuld følsomhedsprofil og lydvalidering bruger alle værdien 100 med 6 s minimumsvarighed og 3,5% samlet frekvens-RMSE. Rapportens bedste syntetiske kandidat består.
 
 Nye profiler er fortsat ukalibrerede driftsindstillinger. Ingen procent for korrekt sted eller dokumenteret real-world-præcision er tilføjet.
+
+
+### Sammenhængende browserversion
+
+Slutkontrollen fandt en gammel programversion i browserens cache, selv om den nye `app.js` kunne hentes fra GitHub Pages. Serveren gav programfilerne `max-age=600`. Builden bruger nu et indholdsadresseret runtime-træ for moduler, Workers og CSS. HTTP-testen følger det faktiske HTML-entrypoint og hele dets import-/Worker-graf, kontrollerer at alle filer kommer fra samme version og at begge Workers kan hentes. Alle 75 tests består også med denne produktionspakning.
