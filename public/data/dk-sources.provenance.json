@@ -1,0 +1,16 @@
+{
+  "query": "SELECT ?item ?itemLabel ?coord ?class WHERE {\n  VALUES ?class { wd:Q16970 wd:Q2977 wd:Q49833 wd:Q194356 }\n  ?item wdt:P31 ?class; wdt:P17 wd:Q35; wdt:P625 ?coord.\n  SERVICE wikibase:label { bd:serviceParam wikibase:language \"da,en\". }\n}",
+  "retrievedAt": "2026-11-04T10:03:01.986Z",
+  "sha256": "1bc2d1d0f11ddafecd2be407ad2fb7d2c6b1ec4a5a78a059a97ffd344eb09902",
+  "license": "CC0 1.0 · https://creativecommons.org/publicdomain/zero/1.0/",
+  "counts": {
+    "churches": 2485,
+    "windSites": 14
+  },
+  "rawResponseHashes": [
+    "ec97c4d54ab1f4dbd80f1fe65250ccf6d2930beb4f37eee7b41957722659da50",
+    "ebdb3828b305264f970e5d7d603b44466d5fdce9479c08de98643a2c59aa519e"
+  ],
+  "geography": "DK bounding box; excludes Greenland and the Faroe Islands",
+  "audioReferences": 0
+}

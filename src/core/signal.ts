@@ -1,6 +1,6 @@
 import {clamp, fft, median} from './math.js';
 import {sensitivityProfile} from './sensitivity.js';
-import {samePassage} from './tracks.js';
+import {samePassage, harmonicGroups} from './tracks.js';
 import type {ProgressFn, Ridge, RidgePoint, SignalAnalysis, SignalOptions} from '../types.js';
 
 export const DEFAULT_SIGNAL_OPTIONS: SignalOptions = {fftSize: 8192, minHz: 30, maxHz: 1000};
@@ -13,7 +13,7 @@ export function analyzeSignalAdaptive(samples: Float32Array, sampleRate: number,
   let best = analyzeSignal(samples, sampleRate, progress, options);
   const attempts = [options.fftSize];
   best.resolutionAttempts = [...attempts];
-  if (best.tracks.length >= 2 && sensitivityProfile(options.sensitivity).value <= 50) return best;
+  if (harmonicGroups(best.tracks).length >= 2 && sensitivityProfile(options.sensitivity).value <= 50) return best;
   const initialCount = best.tracks.length;
   const profile = sensitivityProfile(options.sensitivity), sensitive = profile.value > 50;
   const quality = (analysis: SignalAnalysis): number => analysis.tracks.reduce((score, t) => score + (t.end - t.start) * Math.max(0, t.medianSnr - profile.minPointContrastDb + 1), 0);
@@ -24,7 +24,7 @@ export function analyzeSignalAdaptive(samples: Float32Array, sampleRate: number,
     // Retain a detected passage: a new resolution must explain the same time/frequency trace.
     const retains = best.tracks.every(old => result.tracks.some(track => samePassage(old, track)));
     if (!best.tracks.length || (sensitive ? quality(result) > quality(best) : result.tracks.length > best.tracks.length && retains)) best = result;
-    if (best.tracks.length >= 2 && !sensitive) break;
+    if (harmonicGroups(best.tracks).length >= 2 && !sensitive) break;
   }
   best.resolutionAttempts = [...attempts];
   if (!best.tracks.length) best.warnings.unshift(`Ingen automatiske spor ved FFT ${attempts.map(size => size.toLocaleString('da-DK')).join(', ')}. Zoom ind og undersøg lyden; en optagelse indeholder ikke nødvendigvis en målbar flykurve.`);

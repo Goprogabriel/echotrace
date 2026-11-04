@@ -1,3 +1,4 @@
+import {inRegion} from './regions.js';
 import type {Candidate, FitResult, Flight, GridCell, Match, ProgressFn, Ridge, SearchConfig} from '../types.js';
 import {dopplerFactor, ecef, prepareFlight, type PreparedFlight, type Vec3} from './physics.js';
 import {haversine, offsetPosition} from './math.js';
@@ -45,6 +46,7 @@ export function matchFlights(tracks: Ridge[], flights: Flight[], config: SearchC
   const step = config.radiusKm * 1000 / 8, grid: GridCell[] = [];
   const coarse: Candidate[] = []; let tested = 0;
   const evaluate = (lat: number, lon: number, timeOffsets: number[], spacing: number, curves = false): Candidate | null => {
+    if(config.country && !inRegion({lat,lon},config.country))return null;
     const receiver = ecef(lat, lon, config.receiverAltitudeM); let best: Candidate | null = null;
     for (const offset of timeOffsets) {
       const matches: Match[] = [];

@@ -9,7 +9,7 @@ PROJECT=Path(__file__).resolve().parent.parent
 ROOT=PROJECT/'dist';OUT=PROJECT/'test-output';OUT.mkdir(exist_ok=True)
 html=(ROOT/'index.html').read_text();html=re.sub(r'<meta http-equiv="Content-Security-Policy"[^>]*>','',html);html=re.sub(r'<link[^>]+>','',html);html=re.sub(r'<script[^>]*>.*?</script>','',html)
 sources={str(p.relative_to(ROOT)):p.read_text() for p in (ROOT/'js').rglob('*.js')}
-fixtures={str(p.relative_to(ROOT)):base64.b64encode(p.read_bytes()).decode() for p in list((ROOT/'assets').glob('*'))+list((ROOT/'examples').glob('*.json'))}
+fixtures={str(p.relative_to(ROOT)):base64.b64encode(p.read_bytes()).decode() for p in list((ROOT/'assets').glob('*'))+list((ROOT/'examples').glob('*.json'))+list((ROOT/'data').glob('*.json'))}
 loader=r'''async ({sources,fixtures})=>{
   window.__requests=[];window.__download=null;
   const nativeFetch=window.fetch.bind(window);
@@ -29,7 +29,7 @@ loader=r'''async ({sources,fixtures})=>{
     // Opaque about:blank cannot start module workers; flatten the unchanged engine modules
     // into one classic worker for this local-only test. Production ships the original ES modules.
     if(key==='js/workers/analysis.worker.js'){
-      source=['js/core/math.js','js/core/tracks.js','js/core/sensitivity.js','js/core/signal.js','js/core/physics.js','js/core/matcher.js','js/core/global-search.js','js/core/spectral-support.js',key].map(k=>sources[k].replace(/^import .*?;$/gm,'').replace(/\bexport /g,'')).join('\n');
+      source=['js/core/math.js','js/core/regions.js','js/core/tracks.js','js/core/sensitivity.js','js/core/signal.js','js/core/physics.js','js/core/matcher.js','js/core/global-search.js','js/core/spectral-support.js','js/core/sound-scan.js','js/core/flight-diagnostics.js',key].map(k=>sources[k].replace(/^import .*?;$/gm,'').replace(/\bexport /g,'')).join('\n');
     }
     if(key==='js/app.js')source=source.replace(/type:\s*['"]module['"]/g,"type: 'classic'");
     source=source.replace(/new URL\((['"])([^'"]+)\1,\s*import\.meta\.url\)/g,(_,q,rel)=>JSON.stringify(build(path(key,rel))));
@@ -70,6 +70,8 @@ async def main():
   await page.evaluate("location.hash='/method'");await page.get_by_role('heading',name='Sådan virker Echotrace').wait_for()
   # Reuse loaded app with a real file-selection event and local JSON import.
   await page.set_input_files('#media-input',str(PROJECT/'public/assets/demo.wav'))
+  await page.locator('.sound-card').first.wait_for(timeout=12000)
+  await page.get_by_role('button',name='Undersøg flybaner',exact=True).click()
   await page.locator('#search-form').wait_for(timeout=12000)
   assert not await page.locator('.lab-title .pill').count()
   await page.locator('input[name=date]').fill('2026-08-18T11:00')

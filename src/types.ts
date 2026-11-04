@@ -28,7 +28,7 @@ export interface DecodedAudio {
 export interface FlightPoint { t: number; lat: number; lon: number; altM: number; segment?: number; altitudeReference?: 'msl' | 'pressure' | 'qnh-msl' }
 export interface Flight { id: string; callsign: string; type?: string; points: FlightPoint[] }
 export interface SearchConfig {
-  lat: number; lon: number; radiusKm: number; startTime: number; global?: boolean;
+  country?: import('./core/regions.js').CountryCode; lat: number; lon: number; radiusKm: number; startTime: number; global?: boolean;
   clockUncertainty: number; receiverAltitudeM: number; soundSpeed: number; sensitivity?: number;
 }
 export interface Match {
@@ -40,6 +40,9 @@ export interface Match {
 export interface Candidate {
   lat: number; lon: number; offset: number; misfit: number;
   improvement: number; matches: Match[]; matchedFlights: number;
+  diagnostics?: {method: 'flight-checks/1'; calibrated: false; independentEvents: number; harmonicGroups: string[][];
+    chanceMatch: {trackId: string; controls: number; excessDb: number | null; status: 'supported' | 'weak' | 'insufficient'}[];
+    clockOffsets: {trackId: string; offset: number | null; deltaSeconds: number | null}[]; clockConsistent: boolean; distinctRivalMisfit: number | null; ambiguous: boolean};
   gridSpacingM: number; accepted: boolean; curveAccepted?: boolean; audioEvidence?: 'supported' | 'weak' | 'insufficient';
 }
 export interface GridCell {lat: number; lon: number; misfit: number; spacingM?: number}
@@ -51,7 +54,7 @@ export interface FitResult {
   audioValidation?: AudioValidation; sensitivityProfile?: Readonly<SensitivityProfile>;
   candidates: Candidate[]; grid: GridCell[]; cellM: number;
   tested: number; elapsedMs: number; warnings: string[];
-  search?: {mode: 'global'; flightsScanned: number; regionsRefined: number; maxDistanceKm: number; exhaustive: false};
+  search?: {country?: import('./core/regions.js').CountryCode; mode: 'global'; flightsScanned: number; regionsRefined: number; maxDistanceKm: number; exhaustive: false};
 }
 export interface FlightDataset {
   flights: Flight[]; source: string; license: string; warnings: string[];
@@ -61,3 +64,35 @@ export interface FlightDataset {
 export interface Progress { phase: string; text: string; progress: number }
 export type ProgressFn = (progress: Progress) => void;
 export interface Coverage {first: string; last: string}
+
+export type SoundKind = 'aircraft' | 'church_bell' | 'wind_turbine';
+export interface SoundSignature {
+  version: 'acoustic-signature/1'; spectrum: number[]; peaksHz: number[];
+  onsetRate: number; modulationHz: number; periodicity: number; tonality: number;
+}
+export interface SoundDetection {
+  kind: SoundKind; status: 'possible' | 'no_evidence'; evidence: string[];
+  segments: {start: number; end: number; signature: SoundSignature}[];
+}
+export interface SoundScan {
+  method: 'local-acoustic-screen/1'; calibrated: false;
+  detections: SoundDetection[]; warnings: string[];
+}
+export interface AcousticReference {
+  id: string; sourceId: string; kind: Exclude<SoundKind, 'aircraft'>;
+  signature: SoundSignature; provenance: string; license: string;
+  recordedAt?: string; synthetic: boolean;
+}
+export interface SoundSource {
+  id: string; country: import('./core/regions.js').CountryCode;
+  kind: Exclude<SoundKind, 'aircraft'>; provenance?: string; license?: string; name: string; lat: number; lon: number; url: string;
+}
+export interface SourceCatalog {
+  schema: 'echotrace-sources/1'; country: import('./core/regions.js').CountryCode;
+  source: string; license: string; fetchedAt: string; coverage: string;
+  sources: SoundSource[]; references: AcousticReference[];
+}
+export interface SourceMatch {
+  source: SoundSource; referenceId: string; distance: number; start: number; end: number;
+  status: 'reference_similarity'; receiverLocationKnown: false;
+}

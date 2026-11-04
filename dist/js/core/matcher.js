@@ -1,3 +1,4 @@
+import { inRegion } from './regions.js';
 import { dopplerFactor, ecef, prepareFlight } from './physics.js';
 import { haversine, offsetPosition } from './math.js';
 import { sensitivityProfile } from './sensitivity.js';
@@ -55,6 +56,8 @@ export function matchFlights(tracks, flights, config, progress = () => { }) {
     const coarse = [];
     let tested = 0;
     const evaluate = (lat, lon, timeOffsets, spacing, curves = false) => {
+        if (config.country && !inRegion({ lat, lon }, config.country))
+            return null;
         const receiver = ecef(lat, lon, config.receiverAltitudeM);
         let best = null;
         for (const offset of timeOffsets) {

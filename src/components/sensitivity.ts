@@ -18,5 +18,5 @@ export function sensitivityPanel(s: AppState): string {
 <div class="sensitivity-scale"><span>Strengere krav</span><span>Mere følsom</span></div>
 <p id="sensitivity-summary" class="sensitivity-summary" aria-live="polite">${esc(sensitivitySummary(s.sensitivity))}</p>
 <p id="sensitivity-note" class="small-print">Højere følsomhed kan finde svagere og kortere spor, men giver flere falske matches. Værdien er ikke en sikkerhedsprocent.</p>
-<div class="sensitivity-actions"><button class="btn btn-secondary btn-small" data-action="sensitivity-apply" ${!pending||busy?'disabled':''}>Anvend og analysér igen</button><span class="small-print" role="status">${pending?'Ny følsomhed afventer lydanalyse.':'Følsomheden gælder både lydanalyse og flymatch.'}</span></div></section>`;
+<div class="sensitivity-actions"><button class="btn btn-secondary btn-small" data-action="sensitivity-apply" ${!pending||busy?'disabled':''}>Anvend og analysér igen</button><span class="small-print" role="status">${pending?'Ny følsomhed afventer lydanalyse.':'Følsomheden gælder flyspor og flymatch. Klokke- og støjscreening bruger faste krav.'}</span></div></section>`;
 }

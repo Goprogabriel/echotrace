@@ -1,6 +1,6 @@
 import { clamp, fft, median } from './math.js';
 import { sensitivityProfile } from './sensitivity.js';
-import { samePassage } from './tracks.js';
+import { samePassage, harmonicGroups } from './tracks.js';
 export const DEFAULT_SIGNAL_OPTIONS = { fftSize: 8192, minHz: 30, maxHz: 1000 };
 /** Search finer resolutions for missing passages even after finding one strong tone.
  * At normal/strict settings, retain existing passages when adding tracks.
@@ -10,7 +10,7 @@ export function analyzeSignalAdaptive(samples, sampleRate, progress = () => { },
     let best = analyzeSignal(samples, sampleRate, progress, options);
     const attempts = [options.fftSize];
     best.resolutionAttempts = [...attempts];
-    if (best.tracks.length >= 2 && sensitivityProfile(options.sensitivity).value <= 50)
+    if (harmonicGroups(best.tracks).length >= 2 && sensitivityProfile(options.sensitivity).value <= 50)
         return best;
     const initialCount = best.tracks.length;
     const profile = sensitivityProfile(options.sensitivity), sensitive = profile.value > 50;
@@ -24,7 +24,7 @@ export function analyzeSignalAdaptive(samples, sampleRate, progress = () => { },
         const retains = best.tracks.every(old => result.tracks.some(track => samePassage(old, track)));
         if (!best.tracks.length || (sensitive ? quality(result) > quality(best) : result.tracks.length > best.tracks.length && retains))
             best = result;
-        if (best.tracks.length >= 2 && !sensitive)
+        if (harmonicGroups(best.tracks).length >= 2 && !sensitive)
             break;
     }
     best.resolutionAttempts = [...attempts];

@@ -52,8 +52,8 @@ test('Geodesic offsets remain finite at the poles and wrap longitude',()=>{
  for(const lat of [-90,90]){const p=offsetPosition(lat,179.9,10000,10000);assert(Number.isFinite(p.lat)&&Number.isFinite(p.lon));assert(Math.abs(p.lat)<=90&&Math.abs(p.lon)<=180);}
 });
 test('Search form asks for time and never latitude, longitude or radius',()=>{
- const html=labPage({...initialState(),analysis,selectedTracks:analysis.tracks.map(t=>t.id)});
- assert(html.includes('name="date"'));assert(html.includes('Søg globalt'));
+ const html=labPage({...initialState(),soundTab:'aircraft',analysis,selectedTracks:analysis.tracks.map(t=>t.id)});
+ assert(html.includes('name="date"'));assert(html.includes('Søg i Danmark'));
  assert(!/name="(?:lat|lon|radius)"|id="search-map"|data-preset/.test(html));
 });
 test('Global retrieval follows cursors, deduplicates and records actual completeness',async t=>{

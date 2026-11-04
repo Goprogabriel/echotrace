@@ -1,3 +1,5 @@
+import {diagnoseFlights} from '../core/flight-diagnostics.js';
+import {screenSounds, signature} from '../core/sound-scan.js';
 import {analyzeSignal, analyzeSignalAdaptive} from '../core/signal.js';
 import {validateSpectralSupport} from '../core/spectral-support.js';
 import {matchFlights} from '../core/matcher.js';
@@ -7,14 +9,21 @@ const scope = self as unknown as {onmessage: ((event: MessageEvent) => void) | n
 scope.onmessage = (event: MessageEvent) => {
   try {
     const progress = (data: unknown) => scope.postMessage({type: 'progress', data});
-    if (event.data.type === 'analyze') {
+    if (event.data.type === 'signature') {
+      const samples=event.data.samples as Float32Array, sr=event.data.sampleRate as number;
+      const result=signature(samples,sr,0,Math.min(20,samples.length/sr));
+      if(result.peaksHz.length<3||result.onsetRate<.09||result.tonality<.45)throw new Error('Referencens første 20 sekunder skal indeholde flere tydelige klokkeslag.');
+      scope.postMessage({type:'signature',data:result});
+    } else if (event.data.type === 'analyze') {
       const analyze = event.data.adaptive ? analyzeSignalAdaptive : analyzeSignal;
       const result = analyze(event.data.samples as Float32Array, event.data.sampleRate as number, progress, event.data.options as SignalOptions | undefined);
-      scope.postMessage({type: 'analysis', data: result}, [result.db.buffer, result.waveform.buffer]);
+      const scan = screenSounds(event.data.samples as Float32Array, event.data.sampleRate as number, result);
+      scope.postMessage({type: 'analysis', data: result, scan}, [result.db.buffer, result.waveform.buffer]);
     } else if (event.data.type === 'match') {
       const started = performance.now();
       const result = (event.data.config.global ? matchGlobalFlights : matchFlights)(event.data.tracks as Ridge[], event.data.flights as Flight[], event.data.config as SearchConfig, progress);
       if (event.data.analysis) validateSpectralSupport(result, event.data.analysis as SignalAnalysis, {flights: event.data.flights as Flight[], tracks: event.data.tracks as Ridge[], config: event.data.config as SearchConfig});
+      if(event.data.analysis)diagnoseFlights(result,event.data.analysis,{flights:event.data.flights,tracks:event.data.tracks,config:event.data.config});
       result.elapsedMs = performance.now() - started;
       scope.postMessage({type: 'result', data: result});
     }

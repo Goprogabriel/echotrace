@@ -1,3 +1,4 @@
+import { loadCatalog, parseCatalog, mergeCatalogs, matchSources, referenceBundle } from './core/source-catalog.js';
 import { getLanguage, getLocale, languageFromUrl, languageUrl, setLanguage, translateText, translateTree } from './i18n.js';
 import { homePage } from './pages/home.js';
 import { labPage } from './pages/lab.js';
@@ -14,6 +15,8 @@ import { selectTracksAfterAnalysis } from './core/tracks.js';
 setLanguage(languageFromUrl(location.href));
 const root = document.querySelector('#app');
 const fileInput = document.querySelector('#media-input');
+const catalogInput = document.querySelector('#catalog-input');
+const referenceInput = document.querySelector('#reference-input');
 const dataInput = document.querySelector('#data-input');
 let state = initialState(), cleanups = [];
 let worker = null, controller = new AbortController(), job = 0;
@@ -178,15 +181,16 @@ async function analyzeFile(file, demo, capture = false) {
             pcm = null;
             if (state.blobUrl)
                 URL.revokeObjectURL(state.blobUrl);
-            const sensitivity = state.sensitivity;
+            const sensitivity = state.sensitivity, catalog = state.catalog;
             state = initialState();
+            state.catalog = catalog;
             state.sensitivity = sensitivity;
             state.file = file;
             state.blobUrl = URL.createObjectURL(file);
             if (demo) {
                 state.demo = true;
                 state.dataset = demo.dataset;
-                state.config = { ...demo.config, global: true };
+                state.config = { ...demo.config, global: true, country: 'DK' };
                 state.consent = true;
                 const c = demo.config;
                 state.form = { date: new Date(c.startTime * 1000).toISOString().slice(0, 19), clock: String(c.clockUncertainty), altitude: String(c.receiverAltitudeM), sound: String(c.soundSpeed) };
@@ -230,6 +234,8 @@ function runSignalWorker(decoded, id, adaptive = true) {
             fail(new Error(e.data.message), id);
         if (e.data.type === 'analysis') {
             const previous = state.analysis?.tracks.length ? state.analysis.tracks.filter(t => state.selectedTracks.includes(t.id)) : null;
+            state.scan = e.data.scan;
+            state.sourceMatches = state.catalog ? matchSources(state.scan, state.catalog) : [];
             state.analysis = e.data.data;
             state.signalOptions.fftSize = state.analysis.fftSize;
             state.selectedTracks = selectTracksAfterAnalysis(previous, state.analysis.tracks);
@@ -238,10 +244,12 @@ function runSignalWorker(decoded, id, adaptive = true) {
             worker?.terminate();
             worker = null;
             render();
-            if (state.demo && state.analysis.tracks.length)
+            if (state.demo && state.dataset?.synthetic && state.analysis.tracks.length)
                 void runMatching();
-            else
-                root.querySelector('#search-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            else {
+                void ensureCatalog();
+                root.querySelector('#sound-overview')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
         }
     };
     worker.postMessage({ type: 'analyze', samples: decoded.samples, sampleRate: decoded.sampleRate, options: { ...state.signalOptions, sensitivity: state.sensitivity }, adaptive }, [decoded.samples.buffer]);
@@ -253,9 +261,10 @@ function getConfig() {
     const date = Date.parse(`${f.date}Z`) / 1000;
     if (!Number.isFinite(date) || date < 946684800 || date > 4133980800)
         throw new Error('Angiv en gyldig optagelsestid mellem år 2000 og 2100.');
-    const config = { global: true, lat: 0, lon: 0, radiusKm: 50, startTime: date, clockUncertainty: Number(f.clock), receiverAltitudeM: Number(f.altitude), soundSpeed: Number(f.sound), sensitivity: state.sensitivity };
+    const config = { global: true, lat: 56, lon: 10, radiusKm: 50, startTime: date, clockUncertainty: Number(f.clock), receiverAltitudeM: Number(f.altitude), soundSpeed: Number(f.sound), sensitivity: state.sensitivity };
     if (!Object.values(config).every(v => typeof v === 'boolean' || Number.isFinite(v)) || config.clockUncertainty < 0 || config.clockUncertainty > 60 || config.receiverAltitudeM < -400 || config.receiverAltitudeM > 9000 || config.soundSpeed < 300 || config.soundSpeed > 370)
         throw new Error('Kontrollér tidspunkt, urusikkerhed, mikrofonhøjde og lydhastighed.');
+    config.country = 'DK';
     return config;
 }
 async function runMatching() {
@@ -291,6 +300,7 @@ async function runMatching() {
                 return;
             state.dataset = dataset;
         }
+        state.soundTab = 'aircraft';
         state.stage = 'matching';
         state.progress = { phase: 'matching', text: `Sammenligner ${tracks.length} spor med ${state.dataset.flights.length} flybaner`, progress: .02 };
         render();
@@ -310,6 +320,7 @@ async function runMatching() {
                 worker?.terminate();
                 worker = null;
                 render();
+                void ensureCatalog();
                 root.querySelector('#results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         };
@@ -332,12 +343,25 @@ async function loadDemo() {
         toast(error instanceof Error ? error.message : 'Demoen kunne ikke åbnes.');
     }
 }
+async function loadSoundDemo(kind) {
+    try {
+        const name = `synthetic-${kind}`, response = await fetch(`./assets/${name}.wav`);
+        if (!response.ok)
+            throw new Error('Testlyden mangler.');
+        await analyzeFile(new File([await response.blob()], `${name}.wav`, { type: 'audio/wav' }));
+        state.demo = true;
+        render();
+    }
+    catch (error) {
+        toast(error instanceof Error ? error.message : 'Testlyden kunne ikke åbnes.');
+    }
+}
 function exportReport() {
     if (!state.result || !state.config || !state.analysis)
         return;
-    const report = { schema: 'echotrace-report/3', language: getLanguage(), engineVersion: '0.1.0', exportedAt: new Date().toISOString(), synthetic: state.demo || state.dataset?.synthetic,
+    const report = { schema: 'echotrace-report/3', language: getLanguage(), engineVersion: '0.2.0', country: 'DK', soundScan: state.scan, sourceMatches: state.sourceMatches, exportedAt: new Date().toISOString(), synthetic: state.demo || state.dataset?.synthetic,
         disclaimer: translateText('Eksperimentelle hypoteser, ikke bekræftede placeringer. Fejlmål er frekvensafvigelser, ikke sandsynligheder. Ingen kalibreret lokationspræcision. Brug ikke rapporten til at identificere en person.'),
-        file: { name: state.file?.name, size: state.file?.size, type: state.file?.type }, decoding: state.decoded ? { ...state.decoded, method: translateText(state.decoded.method), warnings: state.decoded.warnings.map(translateText) } : null, search: { mode: 'global', sensitivity: state.config.sensitivity ?? 50, startTime: state.config.startTime, clockUncertainty: state.config.clockUncertainty, receiverAltitudeM: state.config.receiverAltitudeM, soundSpeed: state.config.soundSpeed },
+        file: { name: state.file?.name, size: state.file?.size, type: state.file?.type }, decoding: state.decoded ? { ...state.decoded, method: translateText(state.decoded.method), warnings: state.decoded.warnings.map(translateText) } : null, search: { mode: 'global', sensitivity: state.config.sensitivity ?? 50, startTime: state.config.startTime, country: 'DK', clockUncertainty: state.config.clockUncertainty, receiverAltitudeM: state.config.receiverAltitudeM, soundSpeed: state.config.soundSpeed },
         signal: { sensitivity: state.analysis.sensitivity ?? 50, duration: state.analysis.duration, sampleRate: state.analysis.sampleRate, fftSize: state.analysis.fftSize, hopSize: state.analysis.hopSize, resolutionAttempts: state.analysis.resolutionAttempts, minHz: state.analysis.minHz, maxHz: state.analysis.maxHz, tracks: state.analysis.tracks, selectedTracks: state.selectedTracks, warnings: state.analysis.warnings.map(translateText) },
         data: { source: state.dataset?.source, license: state.dataset?.license, fetchedAt: state.dataset?.fetchedAt, flightCount: state.dataset?.flights.length, retrieval: state.dataset?.retrieval, warnings: state.dataset?.warnings.map(translateText) }, result: { ...state.result, warnings: state.result.warnings.map(translateText) } };
     const url = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }));
@@ -427,6 +451,33 @@ root.addEventListener('click', e => {
         return;
     }
     switch (target.dataset.action) {
+        case 'aircraft':
+            state.soundTab = 'aircraft';
+            render();
+            root.querySelector('#search-section')?.scrollIntoView({ behavior: 'smooth' });
+            break;
+        case 'import-catalog':
+            catalogInput.value = '';
+            catalogInput.click();
+            break;
+        case 'retry-catalog':
+            void ensureCatalog();
+            break;
+        case 'filter-sources':
+            render();
+            root.querySelector('.source-panel details').open = true;
+            break;
+        case 'reference-audio':
+            if (!state.form['reference-source'] || !state.form['reference-provenance']?.trim() || !state.form['reference-license']?.trim() || state.form['reference-consent'] !== 'yes') {
+                toast('Vælg en kirke, angiv ophav og licens, og bekræft retten til referencen.');
+                break;
+            }
+            referenceInput.value = '';
+            referenceInput.click();
+            break;
+        case 'scan-report':
+            downloadJson({ schema: 'echotrace-sound-report/1', country: 'DK', synthetic: state.demo, exportedAt: new Date().toISOString(), scan: state.scan, matches: state.sourceMatches, catalog: state.catalog ? { source: state.catalog.source, license: state.catalog.license, fetchedAt: state.catalog.fetchedAt, coverage: state.catalog.coverage, references: state.catalog.references } : null }, 'echotrace-lydrapport.json');
+            break;
         case 'sensitivity-apply':
             signalAction('sensitivity-apply');
             break;
@@ -436,6 +487,12 @@ root.addEventListener('click', e => {
             break;
         case 'demo':
             void loadDemo();
+            break;
+        case 'demo-bells':
+            void loadSoundDemo('bells');
+            break;
+        case 'demo-turbine':
+            void loadSoundDemo('turbine');
             break;
         case 'cancel':
             cancel();
@@ -482,7 +539,9 @@ root.addEventListener('input', e => {
         return;
     if (!el.name)
         return;
-    if (el.name === 'consent')
+    if (el.name === 'reference-consent' || el.name === 'reference-synthetic')
+        state.form[el.name] = el.checked ? 'yes' : 'no';
+    else if (el.name === 'consent')
         state.consent = el.checked;
     else if (el.name === 'network')
         state.network = el.checked;
@@ -536,6 +595,102 @@ dataInput.onchange = async () => {
             return;
         state.error = error instanceof Error ? error.message : 'Data kunne ikke indlæses.';
         render();
+    }
+};
+function downloadJson(value, name) {
+    const url = URL.createObjectURL(new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+async function ensureCatalog() {
+    if (state.catalog)
+        return;
+    const current = job;
+    try {
+        const catalog = await loadCatalog('DK', controller.signal);
+        if (current !== job)
+            return;
+        state.catalog = state.catalog ? mergeCatalogs(catalog, state.catalog) : catalog;
+        state.catalogError = '';
+        state.sourceMatches = state.scan ? matchSources(state.scan, state.catalog) : [];
+        render();
+    }
+    catch (error) {
+        if (current !== job || controller.signal.aborted)
+            return;
+        state.catalogError = error instanceof Error ? error.message : 'Kataloget kunne ikke indlæses.';
+        render();
+    }
+}
+catalogInput.onchange = async () => {
+    const file = catalogInput.files?.[0], current = job;
+    if (!file)
+        return;
+    try {
+        if (file.size > 15_000_000)
+            throw new Error('Kataloget må højst fylde 15 MB.');
+        const imported = parseCatalog(JSON.parse(await file.text()));
+        if (current !== job)
+            return;
+        state.catalog = state.catalog ? mergeCatalogs(state.catalog, imported) : imported;
+        state.catalogError = '';
+        state.sourceMatches = state.scan ? matchSources(state.scan, state.catalog) : [];
+        render();
+    }
+    catch (error) {
+        if (current === job) {
+            state.catalogError = error instanceof Error ? error.message : 'Ugyldigt katalog.';
+            render();
+        }
+    }
+};
+referenceInput.onchange = async () => {
+    const file = referenceInput.files?.[0], source = state.catalog?.sources.find(s => s.id === state.form['reference-source']);
+    if (!file || !source || isBusy(state))
+        return;
+    stopJob();
+    const current = job;
+    state.stage = 'analyzing';
+    state.progress = { phase: 'reference', text: 'Analyserer referenceoptagelsen lokalt', progress: .05 };
+    render();
+    try {
+        const decoded = await decodeMedia(file, updateProgress, controller.signal);
+        if (current !== job)
+            return;
+        worker = new Worker(new URL('./workers/analysis.worker.js', import.meta.url), { type: 'module' });
+        worker.onerror = () => fail(new Error('Referenceanalysen kunne ikke startes.'), current);
+        worker.onmessage = e => {
+            if (current !== job)
+                return;
+            if (e.data.type === 'error') {
+                fail(new Error(e.data.message), current);
+                return;
+            }
+            if (e.data.type !== 'signature')
+                return;
+            try {
+                const reference = { id: `local-${crypto.randomUUID()}`, sourceId: source.id, kind: source.kind, signature: e.data.data, provenance: state.form['reference-provenance'], license: state.form['reference-license'], synthetic: state.form['reference-synthetic'] === 'yes' };
+                const bundle = referenceBundle(source, reference);
+                state.catalog = state.catalog ? mergeCatalogs(state.catalog, bundle) : bundle;
+                state.sourceMatches = state.scan ? matchSources(state.scan, state.catalog) : [];
+                worker?.terminate();
+                worker = null;
+                state.stage = state.result ? 'done' : 'ready';
+                render();
+                downloadJson(bundle, 'echotrace-reference.json');
+                toast('Referencen er tilføjet lokalt og eksporteret.');
+            }
+            catch (error) {
+                fail(error, current);
+            }
+        };
+        worker.postMessage({ type: 'signature', samples: decoded.samples, sampleRate: decoded.sampleRate }, [decoded.samples.buffer]);
+    }
+    catch (error) {
+        fail(error, current);
     }
 };
 window.addEventListener('dragover', e => { if (e.dataTransfer?.types.includes('Files')) {

@@ -286,6 +286,74 @@ MDN — lokal lydafkodning | MDN — local audio decoding
 OpenStax — Dopplereffekten | OpenStax — the Doppler effect
 OpenStreetMap — vilkår for kortfliser | OpenStreetMap — tile usage policy
 Dokumentation undersøgt 3. november 2026. Eksterne tjenester kan ændre sig. Værktøjet erstatter ikke egne målinger eller faglig verifikation. | Documentation reviewed on 3 November 2026. External services may change. This tool does not replace independent measurements or expert verification.
+
+Åbn en optagelse, og undersøg spor af fly, kirkeklokker og vindmøller. Vi starter i Danmark. | Open a recording and investigate traces of aircraft, church bells and wind turbines. Starting in Denmark.
+Vælg lyd eller video | Choose audio or video
+Prøv syntetiske klokker | Try synthetic bells
+Prøv syntetisk møllestøj | Try synthetic turbine noise
+Scan for flere lydtyper, og se hvilke spor optagelsen indeholder. | Scan for several sound types and explore the traces in your recording.
+Sammenlign med danske kilder og lydreferencer. Brug flybaner til mulige stedhypoteser. | Compare Danish sources and audio references. Use flight tracks to explore possible locations.
+1. Hvilke lyde kan vi se? | 1. Which sounds can we detect?
+Flere lydtyper kan optræde i samme optagelse. Screeningen giver indikationer, ikke sikker genkendelse. | Several sound types can occur in one recording. Screening provides indications, not confirmed recognition.
+Land | Country
+Danmark | Denmark
+Storbritannien · senere | United Kingdom · coming later
+Tyskland · senere | Germany · coming later
+Fly | Aircraft
+Kirkeklokker | Church bells
+Vindmøller | Wind turbines
+Mulig lydtype | Possible sound type
+Ingen tydelig indikation | No clear indication
+Undersøg flybaner | Investigate flight tracks
+Faldende tonale spor undersøges med flybaner og lydkontrol. Manglende spor udelukker ikke flystøj. | Falling tonal traces are investigated using flight tracks and audio checks. Missing traces do not rule out aircraft noise.
+Gentagne anslag og flere smalle resonanser. Musik og andre klokker kan ligne kirkeklokker. | Repeated strikes and several narrow resonances. Music and other bells can resemble church bells.
+Periodisk moduleret bredbåndsstøj. Vind, trafik og maskiner kan give samme mønster. | Periodically modulated broadband noise. Wind, traffic and machinery can produce the same pattern.
+Stedmatch kræver en reference fra den konkrete kirke. | Location matching requires a reference from the specific church.
+Eksperimentel screening. Møllestøj er ikke unik nok til stedmatch i denne version. | Experimental screening. Turbine noise is not distinctive enough for location matching in this version.
+2. Sammenlign med danske kilder | 2. Compare Danish sources
+Kildeplaceringer og lydreferencer er to forskellige datasæt. | Source locations and audio references are two separate datasets.
+Importér katalog / referencer | Import catalogue / references
+{0} kirker · {1} vindmøller / parker · {2} lydreferencer | {0} churches · {1} turbines / wind farms · {2} audio references
+Referencer, der ligner din optagelse | References resembling your recording
+Disse kilders klang ligner optagelsen. Det bekræfter hverken kirken eller mikrofonens placering. | These sources sound similar to the recording. This confirms neither the church nor the microphone location.
+Se kildens placering | View source location
+Ingen referencer opfylder kravene til klanglig lighed. | No references meet the acoustic similarity requirements.
+Ingen stedbundne lydreferencer er indlæst. Kortkataloget alene kan ikke stedbestemme lyden. | No location-linked audio references are loaded. The geographic catalogue alone cannot locate a sound.
+Opbyg et referencebibliotek | Build a reference library
+Vælg en kendt kirke, og åbn en separat optagelse af dens klokker. Referencen behandles lokalt og kan eksporteres til senere brug. Brug en ren optagelse med flere klokkeslag. | Select a known church and open a separate recording of its bells. The reference is processed locally and can be exported for later use. Use a clean recording with several strikes.
+Søg efter kirke | Search for church
+Find kilder | Find sources
+Kendt kilde · højst 30 søgeresultater | Known source · up to 30 search results
+Vælg kirke | Select church
+Referencekilde / ophav | Reference source / attribution
+Referencens licens | Reference licence
+Egen optagelse ved kirken | Own recording at the church
+Egen optagelse · privat brug | Own recording · private use
+Jeg har ret til at bruge referenceoptagelsen og kender dens kildeplacering. | I have permission to use the reference recording and know its source location.
+Åbn referenceoptagelse og gem reference | Open reference audio and save reference
+Referencefiler gemmes kun ved eksport. Genindlæsning af siden rydder indlæste optagelser og referencer. | Reference files are only saved when exported. Reloading clears loaded recordings and references.
+Eksportér lydrapport | Export sound report
+Lydscreeningen er regelbaseret og eksperimentel. Indikationer er ikke sikker genkendelse; manglende indikation udelukker ikke lyden. | Sound screening is rule-based and experimental. Indications are not confirmed recognition; missing indications do not rule out a sound.
+En kildes koordinater er ikke mikrofonens placering. Klokker og vindmøller kræver stedbundne referenceoptagelser. | Source coordinates are not the microphone location. Bells and turbines require location-linked reference recordings.
+Kildekatalog indlæses … | Loading source catalogue …
+3. Find mulige steder med flybaner | 3. Find possible locations using flight tracks
+Angiv tidspunktet. Vi leder efter mulige optagelsessteder i Danmark ud fra lyden og flybanerne. | Enter the time. We search for possible recording locations in Denmark using sound and flight tracks.
+Søg i Danmark | Search Denmark
+Kandidatsøgning i Danmark | Candidate search in Denmark
+Ekstra kontrol af flymatch | Additional aircraft match checks
+Uafhængige lydhændelser: {0}. Harmoniske toner fra samme passage er grupperet. | Independent sound events: {0}. Harmonic tones from the same passage are grouped.
+Fælles urkorrektion: {0} | Shared clock correction: {0}
+Passagerne er forenelige inden for 4 sekunder. | Passages are consistent within 4 seconds.
+Passagerne foretrækker forskellige urkorrektioner. | Passages favour different clock corrections.
+Alternative områder skal stadig vurderes på kortet. | Alternative areas still need to be reviewed on the map.
+Et adskilt område har næsten samme modelfejl. Resultatet er tvetydigt. | A separate area has almost the same model error. The result is ambiguous.
+Utilstrækkelig kontrol | Insufficient control coverage
+Stærkere lydstøtte end kontrolvinduerne | Stronger audio support than control windows
+Lignende lyd i kontrolvinduerne | Similar audio in control windows
+Kontrollerne er eksperimentelle og giver ikke en sandsynlighed eller præcision i meter. | These checks are experimental and provide neither a probability nor an accuracy in metres.
+Følsomheden gælder flyspor og flymatch. Klokke- og støjscreening bruger faste krav. | Sensitivity applies to aircraft traces and matching. Bell and noise screening uses fixed requirements.
+Ufuldstændigt dansk kortkatalog fra Wikidata. Kirker, enkelte møller og vindmølleparker; en parkposition er ikke hver enkelt mølles placering. Kirkebygninger er ikke verificerede aktive klokkekilder. Ingen stedbundne lydreferencer medfølger. | Incomplete Danish geographic catalogue from Wikidata. Churches, individual turbines and wind farms; a wind farm position is not each turbine's location. Church buildings are not verified active bell sources. No location-linked audio references are included.
+Syntetisk testreference · må ikke bruges til stedmatch | Synthetic test reference · must not be used for location matching
 `.trim().split('\n').map(line => line.split(' | ')));
 
 Object.assign(english, Object.fromEntries(`
@@ -443,4 +511,72 @@ Echotrace syntetisk test — ingen virkelige fly | Echotrace synthetic test — 
 adsb.aero / adsb.lol · globalt tidsudsnit | adsb.aero / adsb.lol · global time extract
 Ingen kandidater | No candidates
 Syntetisk test | Synthetic test
+
+Åbn en optagelse, og undersøg spor af fly, kirkeklokker og vindmøller. Vi starter i Danmark. | Open a recording and investigate traces of aircraft, church bells and wind turbines. Starting in Denmark.
+Vælg lyd eller video | Choose audio or video
+Prøv syntetiske klokker | Try synthetic bells
+Prøv syntetisk møllestøj | Try synthetic turbine noise
+Scan for flere lydtyper, og se hvilke spor optagelsen indeholder. | Scan for several sound types and explore the traces in your recording.
+Sammenlign med danske kilder og lydreferencer. Brug flybaner til mulige stedhypoteser. | Compare Danish sources and audio references. Use flight tracks to explore possible locations.
+1. Hvilke lyde kan vi se? | 1. Which sounds can we detect?
+Flere lydtyper kan optræde i samme optagelse. Screeningen giver indikationer, ikke sikker genkendelse. | Several sound types can occur in one recording. Screening provides indications, not confirmed recognition.
+Land | Country
+Danmark | Denmark
+Storbritannien · senere | United Kingdom · coming later
+Tyskland · senere | Germany · coming later
+Fly | Aircraft
+Kirkeklokker | Church bells
+Vindmøller | Wind turbines
+Mulig lydtype | Possible sound type
+Ingen tydelig indikation | No clear indication
+Undersøg flybaner | Investigate flight tracks
+Faldende tonale spor undersøges med flybaner og lydkontrol. Manglende spor udelukker ikke flystøj. | Falling tonal traces are investigated using flight tracks and audio checks. Missing traces do not rule out aircraft noise.
+Gentagne anslag og flere smalle resonanser. Musik og andre klokker kan ligne kirkeklokker. | Repeated strikes and several narrow resonances. Music and other bells can resemble church bells.
+Periodisk moduleret bredbåndsstøj. Vind, trafik og maskiner kan give samme mønster. | Periodically modulated broadband noise. Wind, traffic and machinery can produce the same pattern.
+Stedmatch kræver en reference fra den konkrete kirke. | Location matching requires a reference from the specific church.
+Eksperimentel screening. Møllestøj er ikke unik nok til stedmatch i denne version. | Experimental screening. Turbine noise is not distinctive enough for location matching in this version.
+2. Sammenlign med danske kilder | 2. Compare Danish sources
+Kildeplaceringer og lydreferencer er to forskellige datasæt. | Source locations and audio references are two separate datasets.
+Importér katalog / referencer | Import catalogue / references
+{0} kirker · {1} vindmøller / parker · {2} lydreferencer | {0} churches · {1} turbines / wind farms · {2} audio references
+Referencer, der ligner din optagelse | References resembling your recording
+Disse kilders klang ligner optagelsen. Det bekræfter hverken kirken eller mikrofonens placering. | These sources sound similar to the recording. This confirms neither the church nor the microphone location.
+Se kildens placering | View source location
+Ingen referencer opfylder kravene til klanglig lighed. | No references meet the acoustic similarity requirements.
+Ingen stedbundne lydreferencer er indlæst. Kortkataloget alene kan ikke stedbestemme lyden. | No location-linked audio references are loaded. The geographic catalogue alone cannot locate a sound.
+Opbyg et referencebibliotek | Build a reference library
+Vælg en kendt kirke, og åbn en separat optagelse af dens klokker. Referencen behandles lokalt og kan eksporteres til senere brug. Brug en ren optagelse med flere klokkeslag. | Select a known church and open a separate recording of its bells. The reference is processed locally and can be exported for later use. Use a clean recording with several strikes.
+Søg efter kirke | Search for church
+Find kilder | Find sources
+Kendt kilde · højst 30 søgeresultater | Known source · up to 30 search results
+Vælg kirke | Select church
+Referencekilde / ophav | Reference source / attribution
+Referencens licens | Reference licence
+Egen optagelse ved kirken | Own recording at the church
+Egen optagelse · privat brug | Own recording · private use
+Jeg har ret til at bruge referenceoptagelsen og kender dens kildeplacering. | I have permission to use the reference recording and know its source location.
+Åbn referenceoptagelse og gem reference | Open reference audio and save reference
+Referencefiler gemmes kun ved eksport. Genindlæsning af siden rydder indlæste optagelser og referencer. | Reference files are only saved when exported. Reloading clears loaded recordings and references.
+Eksportér lydrapport | Export sound report
+Lydscreeningen er regelbaseret og eksperimentel. Indikationer er ikke sikker genkendelse; manglende indikation udelukker ikke lyden. | Sound screening is rule-based and experimental. Indications are not confirmed recognition; missing indications do not rule out a sound.
+En kildes koordinater er ikke mikrofonens placering. Klokker og vindmøller kræver stedbundne referenceoptagelser. | Source coordinates are not the microphone location. Bells and turbines require location-linked reference recordings.
+Kildekatalog indlæses … | Loading source catalogue …
+3. Find mulige steder med flybaner | 3. Find possible locations using flight tracks
+Angiv tidspunktet. Vi leder efter mulige optagelsessteder i Danmark ud fra lyden og flybanerne. | Enter the time. We search for possible recording locations in Denmark using sound and flight tracks.
+Søg i Danmark | Search Denmark
+Kandidatsøgning i Danmark | Candidate search in Denmark
+Ekstra kontrol af flymatch | Additional aircraft match checks
+Uafhængige lydhændelser: {0}. Harmoniske toner fra samme passage er grupperet. | Independent sound events: {0}. Harmonic tones from the same passage are grouped.
+Fælles urkorrektion: {0} | Shared clock correction: {0}
+Passagerne er forenelige inden for 4 sekunder. | Passages are consistent within 4 seconds.
+Passagerne foretrækker forskellige urkorrektioner. | Passages favour different clock corrections.
+Alternative områder skal stadig vurderes på kortet. | Alternative areas still need to be reviewed on the map.
+Et adskilt område har næsten samme modelfejl. Resultatet er tvetydigt. | A separate area has almost the same model error. The result is ambiguous.
+Utilstrækkelig kontrol | Insufficient control coverage
+Stærkere lydstøtte end kontrolvinduerne | Stronger audio support than control windows
+Lignende lyd i kontrolvinduerne | Similar audio in control windows
+Kontrollerne er eksperimentelle og giver ikke en sandsynlighed eller præcision i meter. | These checks are experimental and provide neither a probability nor an accuracy in metres.
+Følsomheden gælder flyspor og flymatch. Klokke- og støjscreening bruger faste krav. | Sensitivity applies to aircraft traces and matching. Bell and noise screening uses fixed requirements.
+Ufuldstændigt dansk kortkatalog fra Wikidata. Kirker, enkelte møller og vindmølleparker; en parkposition er ikke hver enkelt mølles placering. Kirkebygninger er ikke verificerede aktive klokkekilder. Ingen stedbundne lydreferencer medfølger. | Incomplete Danish geographic catalogue from Wikidata. Churches, individual turbines and wind farms; a wind farm position is not each turbine's location. Church buildings are not verified active bell sources. No location-linked audio references are included.
+Syntetisk testreference · må ikke bruges til stedmatch | Synthetic test reference · must not be used for location matching
 `.trim().split('\n').map(line => line.split(' | '))));

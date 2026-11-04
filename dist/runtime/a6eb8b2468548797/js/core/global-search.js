@@ -1,3 +1,4 @@
+import { inRegion, REGIONS } from './regions.js';
 import { haversine, offsetPosition } from './math.js';
 import { ecef, prepareFlight } from './physics.js';
 import { fitTrack, matchFlights } from './matcher.js';
@@ -6,6 +7,8 @@ const MAX_REGIONS = 64;
 const MAX_FLIGHTS = 20_000;
 /** Flight-led worldwide candidate search. No user location or assumed home city. */
 export function matchGlobalFlights(tracks, flights, config, progress = () => { }) {
+    if (config.country && !REGIONS[config.country]?.enabled)
+        throw new Error('Dette land understøttes endnu ikke.');
     const started = performance.now(), profile = sensitivityProfile(config.sensitivity);
     if (!tracks.length || tracks.length > 3)
         throw new Error('Vælg mellem ét og tre frekvensspor.');
@@ -52,6 +55,8 @@ export function matchGlobalFlights(tracks, flights, config, progress = () => { }
         const ranked = [];
         for (const [east, north] of screeningOffsets) {
             const p = offsetPosition(center.lat, center.lon, east, north);
+            if (config.country && !inRegion(p, config.country))
+                continue;
             let score = Infinity;
             for (const offset of offsets) {
                 tested++;
@@ -112,6 +117,8 @@ export function matchGlobalFlights(tracks, flights, config, progress = () => { }
         'Søgningen bruger højst 120 km lydafstand og grov geografisk/tidsmæssig afsøgning. Fly uden data eller kandidater uden for disse modelgrænser kan blive overset.',
         'Modellen antager stationær mikrofon, konstant kildetone og ensartet vindstille luft. Gridafstand er ikke lokationspræcision.'
     ];
+    if (config.country)
+        warnings.push('Landefilteret er en geografisk afgrænsningsboks. Kyst, grænseområder og hav er ikke afgrænset med landegrænsepolygoner.');
     if (crowded)
         warnings.push('I tætte områder blev højst de 100 nærmeste flybaner sammenlignet i den detaljerede søgning.');
     if (unique[0]?.matchedFlights === 1)
@@ -122,5 +129,5 @@ export function matchGlobalFlights(tracks, flights, config, progress = () => { }
         warnings.unshift('Ingen kandidater bestod den eksperimentelle kvalitetsgrænse.');
     progress({ phase: 'complete', text: 'Den globale kandidatsøgning er færdig', progress: 1 });
     return { sensitivityProfile: profile, candidates: unique, grid, cellM: 50_000, tested, elapsedMs: performance.now() - started, warnings,
-        search: { mode: 'global', flightsScanned: eligible.length, regionsRefined: refinedRegions, maxDistanceKm: 120, exhaustive: false } };
+        search: { country: config.country, mode: 'global', flightsScanned: eligible.length, regionsRefined: refinedRegions, maxDistanceKm: 120, exhaustive: false } };
 }
