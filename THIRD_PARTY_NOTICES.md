@@ -32,3 +32,7 @@ Wikidata structured geographic data: CC0 1.0.
 https://www.wikidata.org/wiki/Wikidata:Licensing
 Individual imported recordings/references retain their own stated licenses.
 OpenStreetMap raster map tiles retain their existing attribution and usage terms.
+
+OurAirports airport position data: Public Domain, without accuracy warranty.
+https://ourairports.com/data/
+Only Danish small, medium and large airport position records are included.

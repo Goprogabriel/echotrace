@@ -35,3 +35,7 @@ De seneste parserændringer er kontrolleret med et lille live API-svar. Ingen p�
 - Google AudioSet: https://research.google.com/audioset/dataset/index.html og https://research.google.com/audioset/download.html. Undersøgt som mulighed for fremtidige klassifikationsdata. Ingen AudioSet-optagelser eller modelvægte distribueres, og AudioSet bruges ikke til stedmatch.
 
 Detaljer og faktiske begrænsninger: `docs/SOUND-DATA.md`.
+
+## Datakort og flypladser
+
+- OurAirports, primær dataside og public-domain-vilkår: https://ourairports.com/data/. Faktisk CSV hentet fra https://raw.githubusercontent.com/davidmegginson/ourairports-data/main/airports.csv og filtreret til 102 danske flypladser. Proveniens i `public/data/dk-airports.provenance.json`. Ingen driftsstatus eller ADS-B-dækning verificeret.

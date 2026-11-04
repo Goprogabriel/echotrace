@@ -354,6 +354,44 @@ Kontrollerne er eksperimentelle og giver ikke en sandsynlighed eller præcision 
 Følsomheden gælder flyspor og flymatch. Klokke- og støjscreening bruger faste krav. | Sensitivity applies to aircraft traces and matching. Bell and noise screening uses fixed requirements.
 Ufuldstændigt dansk kortkatalog fra Wikidata. Kirker, enkelte møller og vindmølleparker; en parkposition er ikke hver enkelt mølles placering. Kirkebygninger er ikke verificerede aktive klokkekilder. Ingen stedbundne lydreferencer medfølger. | Incomplete Danish geographic catalogue from Wikidata. Churches, individual turbines and wind farms; a wind farm position is not each turbine's location. Church buildings are not verified active bell sources. No location-linked audio references are included.
 Syntetisk testreference · må ikke bruges til stedmatch | Synthetic test reference · must not be used for location matching
+Datakort | Data map
+Datakilder — Echotrace | Data sources — Echotrace
+Danmark · datakilder | Denmark · data sources
+Et samlet kort over vores kilder | One map of our data sources
+Se kendte placeringer, udforsk datagrundlaget og find steder med lydreferencer. | Explore known locations, inspect the available data and find places with audio references.
+Vis datakilder | Show data sources
+Kirker / kirkeklokker | Churches / church bells
+Flypladser | Airfields
+Vindmøller / parker | Wind turbines / farms
+Søg på navn eller kilde-id | Search by name or source ID
+Fx Roskilde, Billund eller Østerild | E.g. Roskilde, Billund or Østerild
+Kun steder med lydreferencer | Only places with audio references
+Nulstil filtre | Reset filters
+{0} af {1} kilder vises | Showing {0} of {1} sources
+Hvid ring = indlæst lydreference · tal = flere kilder | White ring = loaded audio reference · number = multiple sources
+Datakilder og detaljer | Data sources and details
+{0} indlæste lydreferencer | {0} loaded audio references
+Kun geografisk placering · ingen lydreference | Geographic position only · no audio reference
+En flyplads er ikke en flybane. Historisk flydækning afhænger af tidspunktet og ADS-B-arkivet. | An airfield is not a flight trajectory. Historical flight coverage depends on the time and ADS-B archive.
+Åbn original datakilde | Open original data source
+Udforsk datakilderne | Explore data sources
+Klik på en markør eller vælg en kilde i listen. Klik på en gruppe for at zoome ind. | Click a marker or choose a source from the list. Click a cluster to zoom in.
+Filtrerede datakilder | Filtered data sources
+Lydreference indlæst | Audio reference loaded
+Geografisk placering | Geographic position
+Ingen kilder matcher filtrene. Prøv en anden søgning eller slå flere lag til. | No sources match the filters. Try another search or enable more layers.
+Kataloget er ikke tilgængeligt. | The catalogue is unavailable.
+Indlæser datakilder … | Loading data sources …
+Forrige | Previous
+Næste | Next
+Hvad viser kortet? | What does the map show?
+Markører er kendte kildeplaceringer, ikke områder med garanteret lyd- eller flydækning. Kirker på kortet er ikke verificerede aktive klokkekilder. Vindmølleparker vises som parkpositioner, hvor individuelle møllepositioner mangler. | Markers show known source positions, not areas with guaranteed audio or aircraft coverage. Mapped churches are not verified active bell sources. Wind farms appear as farm positions where individual turbine positions are unavailable.
+Kun ikke-syntetiske lydreferencer i den aktuelle session tælles. Referencerne følger med, når du importerer dem eller opretter dem i analyselaboratoriet. | Only non-synthetic audio references in this session are counted. References appear when you import them or create them in the analysis lab.
+Åbn analyselaboratoriet | Open analysis lab
+Vis alle datakilder | Show all data sources
+Kort med datakilder. Klik på en gruppe for at zoome ind eller en kilde for detaljer. | Map of data sources. Click a cluster to zoom in or a source for details.
+Se datakilder på kortet → | See data sources on the map →
+Se alle datakilder på kortet → | See all data sources on the map →
 `.trim().split('\n').filter(line => line.trim()).map(line => line.split(' | ')));
 
 Object.assign(english, Object.fromEntries(`
@@ -579,4 +617,42 @@ Kontrollerne er eksperimentelle og giver ikke en sandsynlighed eller præcision 
 Følsomheden gælder flyspor og flymatch. Klokke- og støjscreening bruger faste krav. | Sensitivity applies to aircraft traces and matching. Bell and noise screening uses fixed requirements.
 Ufuldstændigt dansk kortkatalog fra Wikidata. Kirker, enkelte møller og vindmølleparker; en parkposition er ikke hver enkelt mølles placering. Kirkebygninger er ikke verificerede aktive klokkekilder. Ingen stedbundne lydreferencer medfølger. | Incomplete Danish geographic catalogue from Wikidata. Churches, individual turbines and wind farms; a wind farm position is not each turbine's location. Church buildings are not verified active bell sources. No location-linked audio references are included.
 Syntetisk testreference · må ikke bruges til stedmatch | Synthetic test reference · must not be used for location matching
+Datakort | Data map
+Datakilder — Echotrace | Data sources — Echotrace
+Danmark · datakilder | Denmark · data sources
+Et samlet kort over vores kilder | One map of our data sources
+Se kendte placeringer, udforsk datagrundlaget og find steder med lydreferencer. | Explore known locations, inspect the available data and find places with audio references.
+Vis datakilder | Show data sources
+Kirker / kirkeklokker | Churches / church bells
+Flypladser | Airfields
+Vindmøller / parker | Wind turbines / farms
+Søg på navn eller kilde-id | Search by name or source ID
+Fx Roskilde, Billund eller Østerild | E.g. Roskilde, Billund or Østerild
+Kun steder med lydreferencer | Only places with audio references
+Nulstil filtre | Reset filters
+{0} af {1} kilder vises | Showing {0} of {1} sources
+Hvid ring = indlæst lydreference · tal = flere kilder | White ring = loaded audio reference · number = multiple sources
+Datakilder og detaljer | Data sources and details
+{0} indlæste lydreferencer | {0} loaded audio references
+Kun geografisk placering · ingen lydreference | Geographic position only · no audio reference
+En flyplads er ikke en flybane. Historisk flydækning afhænger af tidspunktet og ADS-B-arkivet. | An airfield is not a flight trajectory. Historical flight coverage depends on the time and ADS-B archive.
+Åbn original datakilde | Open original data source
+Udforsk datakilderne | Explore data sources
+Klik på en markør eller vælg en kilde i listen. Klik på en gruppe for at zoome ind. | Click a marker or choose a source from the list. Click a cluster to zoom in.
+Filtrerede datakilder | Filtered data sources
+Lydreference indlæst | Audio reference loaded
+Geografisk placering | Geographic position
+Ingen kilder matcher filtrene. Prøv en anden søgning eller slå flere lag til. | No sources match the filters. Try another search or enable more layers.
+Kataloget er ikke tilgængeligt. | The catalogue is unavailable.
+Indlæser datakilder … | Loading data sources …
+Forrige | Previous
+Næste | Next
+Hvad viser kortet? | What does the map show?
+Markører er kendte kildeplaceringer, ikke områder med garanteret lyd- eller flydækning. Kirker på kortet er ikke verificerede aktive klokkekilder. Vindmølleparker vises som parkpositioner, hvor individuelle møllepositioner mangler. | Markers show known source positions, not areas with guaranteed audio or aircraft coverage. Mapped churches are not verified active bell sources. Wind farms appear as farm positions where individual turbine positions are unavailable.
+Kun ikke-syntetiske lydreferencer i den aktuelle session tælles. Referencerne følger med, når du importerer dem eller opretter dem i analyselaboratoriet. | Only non-synthetic audio references in this session are counted. References appear when you import them or create them in the analysis lab.
+Åbn analyselaboratoriet | Open analysis lab
+Vis alle datakilder | Show all data sources
+Kort med datakilder. Klik på en gruppe for at zoome ind eller en kilde for detaljer. | Map of data sources. Click a cluster to zoom in or a source for details.
+Se datakilder på kortet → | See data sources on the map →
+Se alle datakilder på kortet → | See all data sources on the map →
 `.trim().split('\n').filter(line => line.trim()).map(line => line.split(' | '))));

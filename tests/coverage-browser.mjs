@@ -1,0 +1,40 @@
+import {fileURLToPath} from 'node:url';
+import {resolve,dirname} from 'node:path';
+import {mkdir,writeFile} from 'node:fs/promises';
+const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'playwright');
+const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');await mkdir(resolve(root,'test-output'),{recursive:true});
+const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH,headless:true});
+const page=await browser.newPage({viewport:{width:1440,height:1050}}),errors=[];
+page.on('pageerror',e=>errors.push(e.message));
+try {
+ await page.goto((process.env.ECHOTRACE_URL||'http://127.0.0.1:4173/')+'#/sources');
+ await page.getByText('2601 af 2601 kilder vises',{exact:true}).waitFor({timeout:15000});
+ if(await page.locator('.coverage-map .heatmap-legend').count())throw Error('Coverage map incorrectly has fit legend');
+ await page.screenshot({path:resolve(root,'test-output/coverage-desktop.png'),fullPage:true});
+ await page.locator('[data-source-kind="church_bell"]').uncheck();await page.locator('[data-source-kind="wind_turbine"]').uncheck();
+ await page.getByText('102 af 2601 kilder vises',{exact:true}).waitFor();
+ await page.locator('[name="coverage-query"]').fill('Billund');await page.getByText('1 af 2601 kilder vises',{exact:true}).waitFor();
+ await page.locator('.coverage-row').click();await page.locator('.coverage-detail h2').filter({hasText:'Billund'}).waitFor();
+ if(!(await page.locator('.coverage-detail').textContent()).includes('OurAirports'))throw Error('Missing attribution');
+ // Clear selection, retain the focused map view, and select via the marker itself.
+ await page.locator('[data-coverage-reset]').click();
+ await page.locator('[data-source-kind="church_bell"]').uncheck();await page.locator('[data-source-kind="wind_turbine"]').uncheck();
+ await page.locator('[name="coverage-query"]').fill('Billund');await page.getByText('1 af 2601 kilder vises',{exact:true}).waitFor();
+ await page.getByRole('heading',{name:'Udforsk datakilderne',exact:true}).waitFor();
+ const canvas=page.locator('.coverage-map canvas');const bounds=await canvas.boundingBox();
+ await canvas.click({position:{x:bounds.width/2,y:bounds.height/2}});
+ await page.locator('.coverage-detail h2').filter({hasText:'Billund'}).waitFor();
+ await page.locator('[name="coverage-references"]').check();await page.getByText('0 af 2601 kilder vises',{exact:true}).waitFor();
+ if(await page.locator('.coverage-row').count())throw Error('Geographic positions incorrectly count as audio references');
+ await page.locator('[data-coverage-reset]').click();await page.getByText('2601 af 2601 kilder vises',{exact:true}).waitFor();
+ await page.locator('.coverage-pagination button').filter({hasText:'Næste'}).click();
+ if(!(await page.locator('.coverage-pagination').textContent()).includes('2 /'))throw Error('Pagination failed');
+ await page.setViewportSize({width:390,height:844});await page.getByRole('button',{name:'Vis alle datakilder',exact:true}).click();await page.screenshot({path:resolve(root,'test-output/coverage-mobile.png'),fullPage:true});
+ if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1))throw Error('Mobile overflow');
+ if(!(await page.getByRole('link',{name:'Datakort',exact:true}).first().isVisible()))throw Error('Mobile map navigation missing');
+ await page.getByRole('button',{name:'Skift til engelsk'}).click();await page.getByRole('heading',{name:'One map of our data sources'}).waitFor();
+ await page.screenshot({path:resolve(root,'test-output/coverage-english.png'),fullPage:true});
+ if(errors.length)throw Error(errors.join('\n'));
+ await writeFile(resolve(root,'test-output/coverage-browser.json'),JSON.stringify({passed:true,checks:['direct route without media','three source layers','airports filter','search','source details and attribution','canvas selection','real references only','filter reset','pagination','mobile no overflow and navigation','language switching'],pageErrors:errors},null,2));
+ console.log('Coverage browser checks passed.');
+} finally {await browser.close();}

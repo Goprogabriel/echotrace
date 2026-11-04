@@ -18,7 +18,7 @@ Hver lydtype screenes uafhængigt. Klokker og periodisk støj undersøges i over
 
 ## Det medfølgende geografiske datasæt
 
-`public/data/dk-sources.json` indeholder 2.485 kirker og 14 vindlokationer fra Wikidata. De 14 omfatter både møller, testcentre og parker. Det er **ikke** et landsdækkende register over hver enkelt vindmølle og **ikke** et lyddatasæt. Historiske, planlagte eller inaktive anlæg kan være med. Kirkebygninger er ikke verificeret som aktive klokkekilder.
+`public/data/dk-sources.json` indeholder 2.485 kirker og 14 vindlokationer fra Wikidata samt 102 flypladser fra OurAirports. De 14 omfatter både møller, testcentre og parker. Flypladserne er geografiske positioner, ikke flybaner eller bevis for historisk ADS-B-dækning. Det er **ikke** et landsdækkende register over hver enkelt vindmølle og **ikke** et lyddatasæt. Historiske, planlagte eller inaktive anlæg kan være med. Kirkebygninger er ikke verificeret som aktive klokkekilder.
 
 Strukturerede Wikidata-data er CC0. Hver kilde har et Wikidata-id, navn, koordinater og HTTPS-link samt kilde- og licensoplysninger. Query, hentetidspunkt og SHA-256 findes i `dk-sources.provenance.json`. Der medfølger **nul stedbundne lydreferencer**; geografiske positioner bruges aldrig som erstatning for lydbevis.
 
@@ -102,3 +102,30 @@ Vi havde allerede emissionstidskorrigeret Doppler, fælles urkorrektion, grov/fi
 `npm run check` kører typekontrol, bygger den leverede `dist/` og kører alle automatiske enhedstests. Nye tests dækker blandet lyd, negative signaler, samplerate/lydniveau, importfejl, referenceadskillelse, syntetiske referencer, harmoniske grupper, kontrolvinduer og dansk geografisk afgrænsning.
 
 `tests/browser-smoke.mjs` kontrollerer den rigtige statiske side, browserafkodning, ES-module Worker, de to nye demoer, katalogindlæsning, referenceoprettelse/-eksport/-import, mobilbredde og flydemoens diagnostik. Det kræver Playwright installeret separat og en kørende lokal server. Valgfri miljøvariable: `PLAYWRIGHT_MODULE`, `CHROMIUM_PATH`, `ECHOTRACE_URL`. Der er ingen Playwright-afhængighed i den leverede app.
+
+## Samlet datakort
+
+Åbn **Datakort** i menuen (`#/sources`). Siden kan åbnes uden en optagelse og viser det indlæste danske kildekatalog på ét kort. Filtre for kirker/kirkeklokker, flypladser og vindmøller/parker kan kombineres med navnesøgning og **Kun steder med lydreferencer**. Kun ikke-syntetiske referencer tælles; geografiske poster alene giver aldrig lydreferencedækning.
+
+Markørfarver følger de tre lag. Talmarkører grupperer nærliggende punkter pr. kategori; klik zoomer ind. Hvid ring viser, at gruppen eller kilden har mindst én indlæst lydreference. En tilgængelig, pagineret liste giver adgang til alle filtrerede kilder. Valg i listen centrerer kortet; kildedetaljer viser navn, koordinater, ophav, licens og link til originalen. Filtrene bevarer kortets udsnit, og målknappen tilpasser det til alle filtrerede kilder. Baggrundskort kan slås fra.
+
+Kortet tegner ikke en opdigtet hørbarhedsradius. Kirkebygninger er ikke verificerede aktive klokker; parkpositioner er ikke hver enkelt vindmølle; en flyplads er ikke en flybane. Flybanedækning afhænger fortsat af optagelsens tidspunkt og arkivet.
+
+### Flypladsdata
+
+102 danske små, mellemstore og store flypladser er udtrukket fra OurAirports' offentlige `airports.csv`, med `iso_country=DK` og samme geografiske afgrænsning som landepakken. Heliporte, søflybaser og registrerede lukkede pladser er udeladt. Græsbaner og private pladser kan være med; aktiv driftsstatus er ikke verificeret. Grønland/Færøerne indgår ikke. Data er public domain uden garanti for nøjagtighed ifølge [OurAirports](https://ourairports.com/data/).
+
+Reproducerbar opdatering:
+
+```sh
+npm run build
+node scripts/update-source-catalog.mjs
+node scripts/update-airports.mjs
+npm run check
+```
+
+Det sidste script kan også læse en gemt `airports.csv` som argument. Kataloget valideres før atomisk erstatning; kildeadresse, hentetid, CSV-hash, antal og filtre gemmes i `public/data/dk-airports.provenance.json`. Opdateringen af Wikidata bevarer allerede indlæste flypladsposter. `dk-sources.provenance.json` beskriver den oprindelige Wikidata-snapshot; det kombinerede katalogs hash findes i flypladsproveniensen efter berigelsen.
+
+`SoundSource.kind` tillader nu også `airport`. Det tilføjer et geografisk lag, ikke en ny akustisk klassifikationskategori. Flypladsposter kan ikke bruges som klokkereferencer. Eksisterende referenceimporter bevarer deres format. Browseren henter hele kataloget fra samme host som appen; den foretager ikke opslag hos OurAirports.
+
+Kortudvidelsen er kontrolleret med 92 automatiske tests samt `tests/coverage-browser.mjs` på den reelle statiske side. Browserkontrollen dækker lag, søgning, referencefilter, markørvalg, kildedetaljer, paginering, mobilbredde og engelsk visning. Det eksisterende lyd-/flybrowserforløb er også kontrolleret efter udvidelsen.
