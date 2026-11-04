@@ -1,3 +1,4 @@
+import {bellTimeline} from './bell-timeline.js';
 import {esc} from './ui.js';
 import {SOUND_TYPES} from '../core/sound-scan.js';
 import {REGIONS} from '../core/regions.js';
@@ -14,6 +15,7 @@ export function soundOverview(s: AppState): string {
     const d = s.scan!.detections.find(d => d.kind === type.id)!;
     return `<article class="panel sound-card"><span class="pill ${d.status === 'possible' ? 'lime' : ''}">${d.status === 'possible' ? 'Mulig lydtype' : 'Ingen tydelig indikation'}</span><h3>${esc(type.label)}</h3><p>${esc(d.evidence.join(' '))}</p>${d.segments.length ? `<p class="mono">${d.segments.slice(0, 4).map(segment => `${segment.start.toFixed(0)}–${segment.end.toFixed(0)} s`).join(' · ')}</p>` : ''}${type.id === 'aircraft' ? `<button class="btn btn-secondary btn-small" data-action="aircraft" ${locked}>Undersøg flybaner</button>` : `<p class="small-print">${type.id === 'church_bell' ? 'Stedmatch kræver en reference fra den konkrete kirke.' : 'Eksperimentel screening. Møllestøj er ikke unik nok til stedmatch i denne version.'}</p>`}</article>`;
   }).join('')}</div>
+  ${bellTimeline(s.scan.bells,s.analysis?.duration||0)}
   <div class="panel source-panel"><div class="section-heading compact"><div><h2>2. Sammenlign med danske kilder</h2><p>Kildeplaceringer og lydreferencer er to forskellige datasæt.</p></div><button class="btn btn-secondary btn-small" data-action="import-catalog" ${locked}>Importér katalog / referencer</button></div>
   ${s.catalogError ? `<p class="error-box" role="alert">${esc(s.catalogError)}</p><button class="text-button" data-action="retry-catalog" ${locked}>Prøv igen</button>` : ''}
   ${catalog ? `<p>${catalog.sources.filter(source => source.kind === 'church_bell').length} kirker · ${catalog.sources.filter(source => source.kind === 'wind_turbine').length} vindmøller / parker · ${catalog.references.filter(ref => !ref.synthetic).length} lydreferencer</p><p class="small-print">${esc(catalog.coverage)}</p><p class="source-credit" data-i18n-skip>${esc(catalog.source)} · ${esc(catalog.license)} · ${esc(catalog.fetchedAt.slice(0, 10))}</p>` : '<p>Kildekatalog indlæses …</p>'}

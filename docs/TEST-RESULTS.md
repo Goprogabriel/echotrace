@@ -1,6 +1,6 @@
 # Version 0.2, 4. november 2026
 
-`npm run check`: 92 tests bestået, ingen fejl. Den reelle statiske app er også kontrolleret med lokal Google Chrome via Playwright: klokke- og støjscreening, dansk katalog, referenceoprettelse/-eksport/-import, mobilvisning uden vandret overflow og flydemo med ekstra diagnostik. Ingen browser-JavaScript-fejl. Browserharness: `tests/browser-smoke.mjs`. Ingen real-world-validering af de nye klassifikatorer eller stedmatch er udført. Se [SOUND-DATA.md](SOUND-DATA.md).
+`npm run check`: 96 tests bestået, ingen fejl. Den reelle statiske app er også kontrolleret med lokal Google Chrome via Playwright: klokke- og støjscreening, dansk katalog, referenceoprettelse/-eksport/-import, mobilvisning uden vandret overflow og flydemo med ekstra diagnostik. Ingen browser-JavaScript-fejl. Browserharness: `tests/browser-smoke.mjs`. Ingen real-world-validering af de nye klassifikatorer eller stedmatch er udført. Se [SOUND-DATA.md](SOUND-DATA.md).
 
 Datakortet er desuden kontrolleret i browseren med kildefiltre, søgning, referencefilter, markørvalg, detaljer, paginering, mobilvisning og engelsk sprog. Se `tests/coverage-browser.mjs`.
 
@@ -208,3 +208,7 @@ Nye profiler er fortsat ukalibrerede driftsindstillinger. Ingen procent for korr
 ### Sammenhængende browserversion
 
 Slutkontrollen fandt en gammel programversion i browserens cache, selv om den nye `app.js` kunne hentes fra GitHub Pages. Serveren gav programfilerne `max-age=600`. Builden bruger nu et indholdsadresseret runtime-træ for moduler, Workers og CSS. HTTP-testen følger det faktiske HTML-entrypoint og hele dets import-/Worker-graf, kontrollerer at alle filer kommer fra samme version og at begge Workers kan hentes. Alle 75 tests består også med denne produktionspakning.
+
+## Klokkeanalyse på brugerleveret video
+
+4. november 2026: 368,45 sekunders virkelig optagelse analyseret lokalt. Før: 7/37 positive screeningsvinduer; efter: 37/37, med 548 ikke-verificerede anslagsforslag. Det er et udviklingseksempel, ikke en uafhængig evalueringsmåling. En komplet browseranalyse på originalfilen kontrollerede tidslinje, alle 37 vinduer, seek, fuld rapporteksport og mobilbredde uden JavaScript-fejl. Fire nye automatiske testcases dækker overlap, negative signaler, gain og stilhed.

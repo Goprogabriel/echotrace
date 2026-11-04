@@ -2,6 +2,8 @@
 
 **Et privat lydlaboratorium i din browser — screening for fly, kirkeklokker og vindmøller med Danmark som første landepakke.**
 
+**Klokketidslinje:** Klokker screenes nu i korte spektralvinduer, så overlappende og svingende klange kan findes bedre. Hele optagelsen vises som en klikbar tidslinje med analysevinduer og anslagsforslag. Forslagene er ikke verificerede slag eller et antal fysiske klokker. Se [metode og faktiske begrænsninger](docs/SOUND-DATA.md).
+
 **Datakort:** Åbn **Datakort** i menuen for et samlet kort med 2.485 kirker, 102 flypladser og 14 vindlokationer. Filtrér efter type, navn og indlæste lydreferencer. Klik på grupper for at zoome ind og på kilder for at se koordinater, ophav og licens. Kortet kan bruges uden en optagelse.
 
 Version 0.2 tilføjer et fælles forløb: vælg lyd/video → scan lydtyper → sammenlign kilder → undersøg stedhypoteser. Klokker kan sammenlignes med egne stedbundne lydreferencer. Vindmøller har foreløbig eksperimentel støjscreening uden stedbestemmelse. Kataloget indeholder 2.485 danske kirker og 14 vindlokationer fra Wikidata (CC0), **ingen stedbundne lydreferencer**. Se [lydmetode, dataformat og begrænsninger](docs/SOUND-DATA.md).
@@ -169,4 +171,4 @@ Koden er MIT. De medfølgende selvskabte syntetiske aktiver og data er CC0. Ekst
 
 Version **0.2.0**, opdateret 4. november 2026.
 
-Valideret med 92 automatiske tests og et lokalt Chromium-browserforløb. Se [SOUND-DATA.md](docs/SOUND-DATA.md) for omfang og [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for kildehenvisninger og licenser.
+Valideret med 96 automatiske tests og et lokalt Chromium-browserforløb. Se [SOUND-DATA.md](docs/SOUND-DATA.md) for omfang og [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for kildehenvisninger og licenser.

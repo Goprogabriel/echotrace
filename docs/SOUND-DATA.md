@@ -129,3 +129,19 @@ Det sidste script kan også læse en gemt `airports.csv` som argument. Kataloget
 `SoundSource.kind` tillader nu også `airport`. Det tilføjer et geografisk lag, ikke en ny akustisk klassifikationskategori. Flypladsposter kan ikke bruges som klokkereferencer. Eksisterende referenceimporter bevarer deres format. Browseren henter hele kataloget fra samme host som appen; den foretager ikke opslag hos OurAirports.
 
 Kortudvidelsen er kontrolleret med 92 automatiske tests samt `tests/coverage-browser.mjs` på den reelle statiske side. Browserkontrollen dækker lag, søgning, referencefilter, markørvalg, kildedetaljer, paginering, mobilbredde og engelsk visning. Det eksisterende lyd-/flybrowserforløb er også kontrolleret efter udvidelsen.
+
+## Klokkegenkendelse opdateret med en virkelig optagelse
+
+Den brugerleverede video blev analyseret lokalt 4. november 2026. Den varer 368,454125 sekunder og indeholder ifølge brugerens beskrivelse gentagne kirkeklokker gennem næsten hele klippet. Titlen angiver Vor Frue Kirke; dette er ikke en automatisk verificeret stedbestemmelse. Videoen, dens rå lyd og udtrukne medieklip distribueres ikke i appen eller testfixtures.
+
+Den oprindelige klokkescreening markerede 7 af 37 overlappende 20-sekunders vinduer. Målingen af samlet RMS-anslag og gennemsnitlig tonalitet overså lange klokkepassager. En separat STFT-analyse viste flere kortvarige resonanser, også hvor gennemsnitsspektret ikke havde nok skarpe toppe.
+
+`src/core/bells.ts` undersøger nu korte spektre ved 8 kHz, FFT 2048 (256 ms, ca. 3,9 Hz pr. bin), med 400 samples/50 ms mellem vinduer. Lokale resonanstoppe sammenlignes med frekvensbaggrunden. Positiv ændring i resonansenergien mod en løbende baggrund erstatter kravet om kraftige RMS-spring. Flere samtidige, delvist ikke-harmoniske resonanser og gentagne ændringer kræves. Perfekte harmoniske maskintoner og stationære flerklange er negative kontroltilfælde. Dette er fortsat en eksperimentel regelbaseret metode; musik og andre klokker kan give falske indikationer.
+
+Den nye analyse markerede 37/37 vinduer i netop denne udviklingsoptagelse og gav 548 anslagsforslag. Anslagsforslag er ikke verificerede slag: klangsvingninger, ekko og overlap kan skabe ekstra forslag, og samtidige slag kan blive slået sammen. De må ikke bruges som antal fysiske klokker. Forbedringen fra 7 til 37 er dækning på en optagelse brugt under udvikling, **ikke** målt præcision eller validering på uafhængige virkelige optagelser.
+
+`SoundScan.method` er nu `local-acoustic-screen/2`. Den stabile reference-deskriptor `acoustic-signature/1` er bevaret, så eksisterende biblioteker fortsat kan importeres. `scan.bells` tilføjer metodeversion, analyseparametre, alle screeningsvinduer, forslag med tid og lokale resonanser samt omtrentlige intervaller. Screening køres én gang over hele klippet, så forslag ikke duplikeres af de overlappende 20-sekunders vinduer. Tidsintervallerne har omtrent ét sekunds opløsning.
+
+Lydoversigten viser nu en klikbar tidslinje, alle screeningsvinduer og en scrollbar liste over anslagsforslag. Klik flytter medieafspilleren til tidspunktet. Højst 1.000 forslag vises i brugerfladen; JSON-lydrapporten indeholder den fulde liste. Referenceoprettelse bruger samme nye klokkescreening på de første 20 sekunder, men kræver fortsat en brugbar signatur.
+
+Nye regressionstests dækker overlappende, svingende klokkemodeller, uforanderlige flerklange, harmonisk moduleret maskinstøj, støj/stilhed, stille klip, ikke-endelige samples og lange pauser mellem ringninger. Den virkelige video er også kontrolleret gennem den faktiske browsers afkodning og analyseworker: 37 vinduer, 548 forslag, visning af hele listen, søgning til 100 sekunder, eksport og mobilbredde. Testartefakter og den fulde personlige analyse ligger uden for de distribuerede data.

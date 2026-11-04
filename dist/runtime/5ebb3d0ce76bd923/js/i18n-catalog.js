@@ -392,6 +392,25 @@ Vis alle datakilder | Show all data sources
 Kort med datakilder. Klik på en gruppe for at zoome ind eller en kilde for detaljer. | Map of data sources. Click a cluster to zoom in or a source for details.
 Se datakilder på kortet → | See data sources on the map →
 Se alle datakilder på kortet → | See all data sources on the map →
+Klokker gennem hele optagelsen | Bells throughout the recording
+{0} af {1} analysevinduer med klokkeindikation · {2} anslagsforslag | {0} of {1} analysis windows with bell indications · {2} proposed attacks
+Anslagsforslag er ændringer i resonanserne. Ekko, svingende klokker og samtidige slag kan give flere forslag for samme slag. Antallet er ikke et antal fysiske klokker. | Proposed attacks are changes in resonances. Echoes, swinging bells and simultaneous strikes may produce several proposals for one strike. This is not a count of physical bells.
+Tidslinje med klokkeindikationer | Timeline of bell indications
+Gå til {0} · {1} | Go to {0} · {1}
+Klokkeindikation | Bell indication
+Ingen tydelig klokkeindikation | No clear bell indication
+Se alle analysevinduer og anslagsforslag | View all analysis windows and proposed attacks
+Vinduerne overlapper. Antal forslag pr. vindue må ikke lægges sammen. Klik på et tidspunkt for at gå til det i optagelsen. | The windows overlap. Proposal counts per window must not be added together. Click a time to seek there in the recording.
+Tidsrum | Time interval
+Korte vinduer med resonanser | Short windows with resonances
+Anslagsforslag | Proposed attacks
+Mulig | Possible
+Utilstrækkelig | Insufficient
+Samlede anslagsforslag | Combined proposed attacks
+De første 1.000 forslag vises her. Den fulde liste findes i lydrapporten. | The first 1,000 proposals are shown here. The full list is in the sound report.
+Anslagsforslag kan også skyldes udsving i klangen, ekko og overlappende klokker. Antallet er ikke et antal fysiske klokker eller verificerede slag. | Proposed attacks can also result from tonal fluctuations, echoes and overlapping bells. The count is not a number of physical bells or verified strikes.
+Tidsintervaller er akustiske forslag med cirka ét sekunds opløsning; musik og andre klokker kan ligne kirkeklokker. | Intervals are acoustic proposals at approximately one-second resolution; music and other bells can resemble church bells.
+Undersøger klokker gennem hele optagelsen | Examining bells throughout the recording
 `.trim().split('\n').filter(line => line.trim()).map(line => line.split(' | ')));
 Object.assign(english, Object.fromEntries(`
 Zoom ind | Zoom in
@@ -654,4 +673,23 @@ Vis alle datakilder | Show all data sources
 Kort med datakilder. Klik på en gruppe for at zoome ind eller en kilde for detaljer. | Map of data sources. Click a cluster to zoom in or a source for details.
 Se datakilder på kortet → | See data sources on the map →
 Se alle datakilder på kortet → | See all data sources on the map →
+Klokker gennem hele optagelsen | Bells throughout the recording
+{0} af {1} analysevinduer med klokkeindikation · {2} anslagsforslag | {0} of {1} analysis windows with bell indications · {2} proposed attacks
+Anslagsforslag er ændringer i resonanserne. Ekko, svingende klokker og samtidige slag kan give flere forslag for samme slag. Antallet er ikke et antal fysiske klokker. | Proposed attacks are changes in resonances. Echoes, swinging bells and simultaneous strikes may produce several proposals for one strike. This is not a count of physical bells.
+Tidslinje med klokkeindikationer | Timeline of bell indications
+Gå til {0} · {1} | Go to {0} · {1}
+Klokkeindikation | Bell indication
+Ingen tydelig klokkeindikation | No clear bell indication
+Se alle analysevinduer og anslagsforslag | View all analysis windows and proposed attacks
+Vinduerne overlapper. Antal forslag pr. vindue må ikke lægges sammen. Klik på et tidspunkt for at gå til det i optagelsen. | The windows overlap. Proposal counts per window must not be added together. Click a time to seek there in the recording.
+Tidsrum | Time interval
+Korte vinduer med resonanser | Short windows with resonances
+Anslagsforslag | Proposed attacks
+Mulig | Possible
+Utilstrækkelig | Insufficient
+Samlede anslagsforslag | Combined proposed attacks
+De første 1.000 forslag vises her. Den fulde liste findes i lydrapporten. | The first 1,000 proposals are shown here. The full list is in the sound report.
+Anslagsforslag kan også skyldes udsving i klangen, ekko og overlappende klokker. Antallet er ikke et antal fysiske klokker eller verificerede slag. | Proposed attacks can also result from tonal fluctuations, echoes and overlapping bells. The count is not a number of physical bells or verified strikes.
+Tidsintervaller er akustiske forslag med cirka ét sekunds opløsning; musik og andre klokker kan ligne kirkeklokker. | Intervals are acoustic proposals at approximately one-second resolution; music and other bells can resemble church bells.
+Undersøger klokker gennem hele optagelsen | Examining bells throughout the recording
 `.trim().split('\n').filter(line => line.trim()).map(line => line.split(' | '))));

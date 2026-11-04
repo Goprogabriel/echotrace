@@ -275,8 +275,9 @@ function signalAction(action:string):void {
   }catch(error){toast(error instanceof Error?error.message:'Kontrollér lydindstillingerne.');}
 }
 root.addEventListener('click',e=>{
-  const target=(e.target as Element).closest<HTMLElement>('[data-action],[data-scroll],[data-candidate],[data-track-zoom],[data-language]');if(!target)return;
+  const target=(e.target as Element).closest<HTMLElement>('[data-action],[data-scroll],[data-candidate],[data-track-zoom],[data-language],[data-bell-seek]');if(!target)return;
   if(target.hasAttribute('disabled'))return;
+  if(target.dataset.bellSeek!==undefined){if(isBusy(state))return;const media=root.querySelector<HTMLMediaElement>('.video-frame video,.video-frame audio');if(media&&Number.isFinite(Number(target.dataset.bellSeek))){media.currentTime=Number(target.dataset.bellSeek);media.scrollIntoView({behavior:'smooth',block:'center'});}return;}
   if(target.dataset.language==='da'||target.dataset.language==='en'){changeLanguage(target.dataset.language);return;}
   if(target.closest('#signal-controls')){
     if(isBusy(state))return;

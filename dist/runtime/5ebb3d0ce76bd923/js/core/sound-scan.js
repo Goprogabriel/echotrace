@@ -1,3 +1,4 @@
+import { analyzeBells } from './bells.js';
 import { fft, median, clamp } from './math.js';
 export const SOUND_TYPES = [
     { id: 'aircraft', label: 'Fly', experimental: true },
@@ -86,20 +87,20 @@ export function signature(samples, sampleRate, start = 0, end = samples.length /
         modulationHz, periodicity: cv >= .08 && total > 1e-18 ? clamp(periodicity, 0, 1) : 0,
         tonality: total > 1e-18 ? clamp(tonalPower / total, 0, 1) : 0 };
 }
-export function screenSounds(samples, sampleRate, analysis) {
+export function screenSounds(samples, sampleRate, analysis, progress = () => { }) {
     const detections = SOUND_TYPES.map(t => ({ kind: t.id, status: 'no_evidence', evidence: [], segments: [] }));
     const by = (kind) => detections.find(d => d.kind === kind);
     if (analysis.tracks.length)
         by('aircraft').status = 'possible';
     by('aircraft').evidence.push('Faldende tonale spor undersøges med flybaner og lydkontrol. Manglende spor udelukker ikke flystøj.');
-    const duration = samples.length / sampleRate;
+    const duration = samples.length / sampleRate, bells = analyzeBells(samples, sampleRate, fraction => progress({ phase: 'bells', text: 'Undersøger klokker gennem hele optagelsen', progress: fraction }));
     // Overlap avoids splitting strikes and short mixed-source passages at a boundary.
     for (let start = 0; start < duration - 1; start += 10) {
         const end = Math.min(start + 20, duration);
         if (end - start < 5)
             continue;
         const s = signature(samples, sampleRate, start, end);
-        if (s.peaksHz.length >= 3 && s.tonality > .45 && s.onsetRate >= .09)
+        if (bells.windows.some(w => w.start === start && w.accepted))
             by('church_bell').segments.push({ start, end, signature: s });
         if (end - start >= 12 && s.periodicity > .65 && s.tonality < .3 && s.modulationHz >= .35)
             by('wind_turbine').segments.push({ start, end, signature: s });
@@ -109,7 +110,7 @@ export function screenSounds(samples, sampleRate, analysis) {
             d.status = 'possible';
     by('church_bell').evidence.push('Gentagne anslag og flere smalle resonanser. Musik og andre klokker kan ligne kirkeklokker.');
     by('wind_turbine').evidence.push('Periodisk moduleret bredbåndsstøj. Vind, trafik og maskiner kan give samme mønster.');
-    return { method: 'local-acoustic-screen/1', calibrated: false, detections,
+    return { method: 'local-acoustic-screen/2', calibrated: false, detections, bells,
         warnings: ['Lydscreeningen er regelbaseret og eksperimentel. Indikationer er ikke sikker genkendelse; manglende indikation udelukker ikke lyden.', 'En kildes koordinater er ikke mikrofonens placering. Klokker og vindmøller kræver stedbundne referenceoptagelser.'] };
 }
 /** Lower is more similar. Frequency agreement is deliberately strict for bells. */

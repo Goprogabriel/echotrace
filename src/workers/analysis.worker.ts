@@ -1,3 +1,4 @@
+import {analyzeBells} from '../core/bells.js';
 import {diagnoseFlights} from '../core/flight-diagnostics.js';
 import {screenSounds, signature} from '../core/sound-scan.js';
 import {analyzeSignal, analyzeSignalAdaptive} from '../core/signal.js';
@@ -12,12 +13,12 @@ scope.onmessage = (event: MessageEvent) => {
     if (event.data.type === 'signature') {
       const samples=event.data.samples as Float32Array, sr=event.data.sampleRate as number;
       const result=signature(samples,sr,0,Math.min(20,samples.length/sr));
-      if(result.peaksHz.length<3||result.onsetRate<.09||result.tonality<.45)throw new Error('Referencens første 20 sekunder skal indeholde flere tydelige klokkeslag.');
+      if(!analyzeBells(samples.subarray(0,Math.min(samples.length,Math.floor(20*sr))),sr).windows.some(w=>w.accepted)||result.peaksHz.length<3)throw new Error('Referencens første 20 sekunder skal indeholde flere tydelige klokkeslag.');
       scope.postMessage({type:'signature',data:result});
     } else if (event.data.type === 'analyze') {
       const analyze = event.data.adaptive ? analyzeSignalAdaptive : analyzeSignal;
       const result = analyze(event.data.samples as Float32Array, event.data.sampleRate as number, progress, event.data.options as SignalOptions | undefined);
-      const scan = screenSounds(event.data.samples as Float32Array, event.data.sampleRate as number, result);
+      const scan = screenSounds(event.data.samples as Float32Array, event.data.sampleRate as number, result,progress);
       scope.postMessage({type: 'analysis', data: result, scan}, [result.db.buffer, result.waveform.buffer]);
     } else if (event.data.type === 'match') {
       const started = performance.now();

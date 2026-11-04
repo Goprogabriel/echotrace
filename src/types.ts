@@ -75,7 +75,7 @@ export interface SoundDetection {
   segments: {start: number; end: number; signature: SoundSignature}[];
 }
 export interface SoundScan {
-  method: 'local-acoustic-screen/1'; calibrated: false;
+  method: 'local-acoustic-screen/1' | 'local-acoustic-screen/2'; calibrated: false; bells?: BellAnalysis;
   detections: SoundDetection[]; warnings: string[];
 }
 export interface AcousticReference {
@@ -95,4 +95,10 @@ export interface SourceCatalog {
 export interface SourceMatch {
   source: SoundSource; referenceId: string; distance: number; start: number; end: number;
   status: 'reference_similarity'; receiverLocationKnown: false;
+}
+
+export interface BellWindow {start:number;end:number;tonalFraction:number;inharmonicFraction:number;attackCount:number;accepted:boolean}
+export interface BellAnalysis {
+  method:'resonance-flux/1';sampleRate:number;fftSize:number;hopSize:number;
+  windows:BellWindow[];events:{t:number;novelty:number;resonancesHz:number[]}[];intervals:{start:number;end:number}[];warnings:string[];
 }
