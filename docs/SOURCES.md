@@ -26,3 +26,12 @@ De seneste parserændringer er kontrolleret med et lille live API-svar. Ingen p�
 
 - SciPy ShortTimeFFT: vinduescentre, hop og frekvensbins, konsulteret som signalbehandlingsreference (ingen SciPy-runtime i appen): https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.ShortTimeFFT.html
 - SciPy peak prominence: lokal kontrast mod baggrund, konsulteret som begrebsreference (vores kontrastmål er ikke SciPys algoritme): https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.peak_prominences.html
+
+## Udvidelse 4. november 2026
+
+- AeroDoppler, kildekode og metode, commit `644c16bf7f5ceb7d4579ad365cfc07d631d1f0cb`: https://github.com/leo-aa88/aerodoppler. Gennemgået scoring, harmonisk gruppering, emissionstidsmodel, nulhypotesekontroller og fælles ur. Selvstændige TypeScript-implementeringer; MIT-notits i `THIRD_PARTY_NOTICES.md`.
+- Wikidata structured data/CC0: https://www.wikidata.org/wiki/Wikidata:Licensing. Faktisk hentede danske geografiske data, query og hasher i `public/data/dk-sources.provenance.json`.
+- Energistyrelsens stamdataregister: https://ens.dk/analyser-og-statistik/data-oversigt-over-energisektoren. Undersøgt som en fremtidig, mere omfattende vindmøllekilde; ikke importeret.
+- Google AudioSet: https://research.google.com/audioset/dataset/index.html og https://research.google.com/audioset/download.html. Undersøgt som mulighed for fremtidige klassifikationsdata. Ingen AudioSet-optagelser eller modelvægte distribueres, og AudioSet bruges ikke til stedmatch.
+
+Detaljer og faktiske begrænsninger: `docs/SOUND-DATA.md`.

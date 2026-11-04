@@ -1,3 +1,9 @@
+# Version 0.2, 4. november 2026
+
+`npm run check`: 87 tests bestået, ingen fejl. Den reelle statiske app er også kontrolleret med lokal Google Chrome via Playwright: klokke- og støjscreening, dansk katalog, referenceoprettelse/-eksport/-import, mobilvisning uden vandret overflow og flydemo med ekstra diagnostik. Ingen browser-JavaScript-fejl. Browserharness: `tests/browser-smoke.mjs`. Ingen real-world-validering af de nye klassifikatorer eller stedmatch er udført. Se [SOUND-DATA.md](SOUND-DATA.md).
+
+## Historiske testresultater
+
 # Testresultater — Echotrace 0.1.0
 
 Kørt 3. november 2026. Resultaterne beskriver denne leverede version, ikke generel geolokationspræcision.

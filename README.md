@@ -1,6 +1,10 @@
 # Echotrace · Find sporet i lyden
 
-**Et privat lydlaboratorium i din browser — fra video til spektrogram og mulige Dopplerspor fra fly.**
+**Et privat lydlaboratorium i din browser — screening for fly, kirkeklokker og vindmøller med Danmark som første landepakke.**
+
+Version 0.2 tilføjer et fælles forløb: vælg lyd/video → scan lydtyper → sammenlign kilder → undersøg stedhypoteser. Klokker kan sammenlignes med egne stedbundne lydreferencer. Vindmøller har foreløbig eksperimentel støjscreening uden stedbestemmelse. Kataloget indeholder 2.485 danske kirker og 14 vindlokationer fra Wikidata (CC0), **ingen stedbundne lydreferencer**. Se [lydmetode, dataformat og begrænsninger](docs/SOUND-DATA.md).
+
+Flydelen er forbedret efter gennemgang af [AeroDoppler](https://github.com/leo-aa88/aerodoppler): harmoniske spor grupperes, ekstra lydkontrol bruger andre tidsvinduer i optagelsen, og fælles urkorrektion/alternative områder forklares i resultatet. GB og DE er forberedte, deaktiverede landepakker. Alle resultater er eksperimentelle.
 
 [**Åbn live-demoen →**](https://goprogabriel.github.io/echotrace/) · [Prøv analyselaboratoriet](https://goprogabriel.github.io/echotrace/#/lab) · [Læs metoden](docs/METHOD.md)
 
@@ -59,7 +63,7 @@ Appen bruger relative filstier og hash-routing (`#/lab`, `#/method`, `#/privacy`
 - Én følsomhedsskyder (0–100) til både lydanalyse og flymatch. Se de konkrete krav til varighed, frekvensfejl og lydstøtte, og anvend dem med ny analyse. Standard 50 bevarer de hidtidige grænser.
 - Automatisk genforsøg med finere frekvensopløsning ved færre end to spor, så et kraftigt spor ikke alene stopper søgningen efter svagere spor.
 - Lydafkodning via browseren; FFT, tonale spor og fysisk kurvematch i Web Workers.
-- Indtastning af UTC-tid og automatisk global kandidatsøgning — ingen koordinater eller søgeradius. Urusikkerhed og mikrofonhøjde kan justeres under avancerede parametre.
+- Indtastning af UTC-tid og automatisk kandidatsøgning i en geografisk boks omkring Danmark — ingen koordinater eller søgeradius. Urusikkerhed og mikrofonhøjde kan justeres under avancerede parametre.
 - Adapter til adsb.aeros dokumenterede historiske API med tilgængelige QNH-højderettelser samt lokal JSON-, CSV- og gzip-import. Originale readsb-traces og gemte API-svar kan importeres direkte, også flere filer sammen.
 - Resultater med koordinater, indtastet optagelsestid, urjustering, alternative kandidater, flybaner, modelfejl og forklaringer.
 - Interaktive OpenStreetMap-kort viser de beregnede mulige områder. Træk for at flytte, og zoom med +/−, to fingre eller Ctrl/Command + rul. Baggrundskort kan slås fra.
@@ -82,7 +86,7 @@ Et “muligt kandidatområde” er en matematisk hypotese. Modelfejl er **ikke**
 
 Den eksterne API-adapter er implementeret efter den offentlige dokumentation og testet med lokale svar-eksempler. Et afgrænset livekald med to flybaner og CORS-headeren er verificeret; en komplet global hentning er ikke belastningstestet. Hvis udbyderen er nede, ændrer format eller ikke har din dato, viser appen en fejl og tilbyder lokal import — den opfinder ikke data. Eksterne flydata er ikke inkluderet i ZIP’en; kun syntetiske eksempler medfølger.
 
-### Global søgning og gratis drift
+### Dansk kandidatsøgning og gratis drift
 
 Der hentes sider fra adsb.aero med et tidsfilter og uden geografisk filter. Hentningen stopper ved komplet svar eller en synlig sikkerhedsgrænse: 200 sider, 20.000 flybaner eller 1.000.000 datapunkter. Arkivdækning og manglende flydata betyder, at et komplet API-svar stadig ikke er alle faktiske fly.
 
@@ -161,4 +165,6 @@ docs/                      Metode, datakontrakt, testresultater og deploy
 
 Koden er MIT. De medfølgende selvskabte syntetiske aktiver og data er CC0. Eksterne flydata og kort har deres egne vilkår; MIT-licensen ændrer ikke dem. Ingen fontfiler distribueres.
 
-Version **0.1.0**, udarbejdet 3. november 2026.
+Version **0.2.0**, opdateret 4. november 2026.
+
+Valideret med 87 automatiske tests og et lokalt Chromium-browserforløb. Se [SOUND-DATA.md](docs/SOUND-DATA.md) for omfang og [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for kildehenvisninger og licenser.

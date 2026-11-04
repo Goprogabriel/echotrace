@@ -1,3 +1,5 @@
+import { sourcesPage } from './pages/sources.js';
+import { coveragePoints, filterCoverage, SOURCE_LAYERS } from './core/coverage.js';
 import { loadCatalog, parseCatalog, mergeCatalogs, matchSources, referenceBundle } from './core/source-catalog.js';
 import { getLanguage, getLocale, languageFromUrl, languageUrl, setLanguage, translateText, translateTree } from './i18n.js';
 import { homePage } from './pages/home.js';
@@ -18,6 +20,10 @@ const fileInput = document.querySelector('#media-input');
 const catalogInput = document.querySelector('#catalog-input');
 const referenceInput = document.querySelector('#reference-input');
 const dataInput = document.querySelector('#data-input');
+const sourcesView = { filter: { kinds: SOURCE_LAYERS.map(l => l.id), query: '', referencesOnly: false }, selectedId: null, page: 0 };
+const sourcesMapView = { lat: 56.1, lon: 11.1, zoom: 6 };
+let catalogLoad = null;
+let sourcesMapFitted = false;
 let state = initialState(), cleanups = [];
 let worker = null, controller = new AbortController(), job = 0;
 let currentToast = '';
@@ -41,8 +47,8 @@ function render() {
     cleanups = [];
     previousMedia?.pause();
     const r = route();
-    root.innerHTML = r === '#/lab' ? labPage(state) : r === '#/privacy' ? docsPage('privacy') : r === '#/method' ? docsPage('method') : homePage();
-    document.title = r === '#/lab' ? 'Signal-lab — Echotrace' : r === '#/privacy' ? 'Privatliv — Echotrace' : r === '#/method' ? 'Metoden — Echotrace' : 'Echotrace — Find sporet i lyden';
+    root.innerHTML = r === '#/sources' ? sourcesPage(state, sourcesView) : r === '#/lab' ? labPage(state) : r === '#/privacy' ? docsPage('privacy') : r === '#/method' ? docsPage('method') : homePage();
+    document.title = r === '#/sources' ? 'Datakilder — Echotrace' : r === '#/lab' ? 'Signal-lab — Echotrace' : r === '#/privacy' ? 'Privatliv — Echotrace' : r === '#/method' ? 'Metoden — Echotrace' : 'Echotrace — Find sporet i lyden';
     cleanups.push(startReveals(root));
     const hero = root.querySelector('#hero-canvas');
     if (hero)
@@ -63,6 +69,11 @@ function render() {
         };
     if (r === '#/lab')
         initLab();
+    if (r === '#/sources') {
+        initSources();
+        if (!state.catalog && !catalogLoad && !state.catalogError)
+            void ensureCatalog();
+    }
     document.documentElement.lang = getLanguage();
     document.title = translateText(document.title);
     const description = document.querySelector('meta[name="description"]');
@@ -90,6 +101,42 @@ function changeLanguage(language) {
     }
     root.querySelectorAll('details').forEach((el, i) => el.open = details[i] || false);
     root.querySelector(`[data-language="${language}"]`)?.focus({ preventScroll: true });
+}
+function initSources() {
+    const points = state.catalog ? filterCoverage(coveragePoints(state.catalog), sourcesView.filter) : [];
+    const map = root.querySelector('#coverage-map');
+    const select = (id, focus = false) => {
+        sourcesView.selectedId = id;
+        const source = points.find(p => p.id === id);
+        if (focus && source) {
+            sourcesMapView.lat = source.lat;
+            sourcesMapView.lon = source.lon;
+            sourcesMapView.zoom = Math.max(12, sourcesMapView.zoom);
+        }
+        render();
+    };
+    if (map)
+        cleanups.push(mountMap(map, { config: { lat: 56.1, lon: 11.1, radiusKm: 50, global: true, startTime: 0, clockUncertainty: 0, receiverAltitudeM: 0, soundSpeed: 343 }, flights: [], candidates: [], grid: [], selected: 0, onSelect: () => { }, view: sourcesMapView, fitOnMount: !!state.catalog && !sourcesMapFitted, sourceLayer: { points, selectedId: sourcesView.selectedId, onSelect: id => select(id) } }));
+    if (state.catalog)
+        sourcesMapFitted = true;
+    root.querySelectorAll('[data-source-kind]').forEach(input => input.addEventListener('change', () => {
+        sourcesView.filter.kinds = SOURCE_LAYERS.filter(layer => root.querySelector(`[data-source-kind="${layer.id}"]`)?.checked).map(layer => layer.id);
+        sourcesView.page = 0;
+        render();
+    }));
+    root.querySelector('[name="coverage-references"]')?.addEventListener('change', e => { sourcesView.filter.referencesOnly = e.target.checked; sourcesView.page = 0; render(); });
+    const query = root.querySelector('[name="coverage-query"]');
+    let timer;
+    query?.addEventListener('input', () => {
+        sourcesView.filter.query = query.value;
+        sourcesView.page = 0;
+        clearTimeout(timer);
+        timer = setTimeout(() => { render(); root.querySelector('[name="coverage-query"]')?.focus({ preventScroll: true }); }, 150);
+    });
+    cleanups.push(() => clearTimeout(timer));
+    root.querySelector('[data-coverage-reset]')?.addEventListener('click', () => { sourcesView.filter = { kinds: SOURCE_LAYERS.map(l => l.id), query: '', referencesOnly: false }; sourcesView.selectedId = null; sourcesView.page = 0; render(); });
+    root.querySelectorAll('[data-source-id]').forEach(button => button.addEventListener('click', () => select(button.dataset.sourceId, true)));
+    root.querySelectorAll('[data-coverage-page]').forEach(button => button.addEventListener('click', () => { sourcesView.page = Number(button.dataset.coveragePage); render(); }));
 }
 function initLab() {
     const draw = () => {
@@ -523,6 +570,8 @@ root.addEventListener('click', e => {
 });
 root.addEventListener('input', e => {
     const el = e.target;
+    if (el.closest('#coverage-controls'))
+        return;
     if (el.name === 'sensitivity') {
         if (isBusy(state))
             return;
@@ -550,6 +599,8 @@ root.addEventListener('input', e => {
 });
 root.addEventListener('change', e => {
     const el = e.target;
+    if (el.closest('#coverage-controls'))
+        return;
     if (el.name === 'sensitivity') {
         if (isBusy(state))
             return;
@@ -605,25 +656,27 @@ function downloadJson(value, name) {
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-async function ensureCatalog() {
+function ensureCatalog() {
     if (state.catalog)
-        return;
-    const current = job;
-    try {
-        const catalog = await loadCatalog('DK', controller.signal);
-        if (current !== job)
-            return;
-        state.catalog = state.catalog ? mergeCatalogs(catalog, state.catalog) : catalog;
-        state.catalogError = '';
-        state.sourceMatches = state.scan ? matchSources(state.scan, state.catalog) : [];
-        render();
-    }
-    catch (error) {
-        if (current !== job || controller.signal.aborted)
-            return;
-        state.catalogError = error instanceof Error ? error.message : 'Kataloget kunne ikke indlæses.';
-        render();
-    }
+        return Promise.resolve();
+    if (catalogLoad)
+        return catalogLoad;
+    catalogLoad = (async () => {
+        try {
+            const catalog = await loadCatalog('DK');
+            state.catalog = state.catalog ? mergeCatalogs(catalog, state.catalog) : catalog;
+            state.catalogError = '';
+            state.sourceMatches = state.scan ? matchSources(state.scan, state.catalog) : [];
+        }
+        catch (error) {
+            state.catalogError = error instanceof Error ? error.message : 'Kataloget kunne ikke indlæses.';
+        }
+        finally {
+            catalogLoad = null;
+            render();
+        }
+    })();
+    return catalogLoad;
 }
 catalogInput.onchange = async () => {
     const file = catalogInput.files?.[0], current = job;
@@ -672,7 +725,7 @@ referenceInput.onchange = async () => {
             if (e.data.type !== 'signature')
                 return;
             try {
-                const reference = { id: `local-${crypto.randomUUID()}`, sourceId: source.id, kind: source.kind, signature: e.data.data, provenance: state.form['reference-provenance'], license: state.form['reference-license'], synthetic: state.form['reference-synthetic'] === 'yes' };
+                const reference = { id: `local-${crypto.randomUUID()}`, sourceId: source.id, kind: 'church_bell', signature: e.data.data, provenance: state.form['reference-provenance'], license: state.form['reference-license'], synthetic: state.form['reference-synthetic'] === 'yes' };
                 const bundle = referenceBundle(source, reference);
                 state.catalog = state.catalog ? mergeCatalogs(state.catalog, bundle) : bundle;
                 state.sourceMatches = state.scan ? matchSources(state.scan, state.catalog) : [];

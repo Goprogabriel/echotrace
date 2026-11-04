@@ -1,3 +1,7 @@
+# Version 0.2: flere lydtyper
+
+Den fælles screening, danske landepakke, referencebibliotek og de nye flykontroller er beskrevet i [SOUND-DATA.md](SOUND-DATA.md). Flysøgningen afgrænses nu til en geografisk boks omkring Danmark; omtale af verdensomspændende kandidater nedenfor beskriver den underliggende motor uden dette nye landefilter.
+
 # Metode og implementering
 
 Echotrace er en selvstændig eksperimentel implementering. Det er ikke en kopi af den oprindelige videos private kode, og den er ikke valideret som et generelt geolokationsprodukt.

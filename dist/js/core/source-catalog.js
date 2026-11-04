@@ -23,13 +23,13 @@ export function parseCatalog(value, country = 'DK') {
         return fail();
     const ids = new Set(), refIds = new Set();
     for (const s of c.sources) {
-        if (!s || !text(s.id, 160) || ids.has(s.id) || !text(s.name, 300) || s.country !== country || !['church_bell', 'wind_turbine'].includes(s.kind) || !inRegion(s, country) || !url(s.url) || (s.provenance !== undefined && !text(s.provenance)) || (s.license !== undefined && !text(s.license)))
+        if (!s || !text(s.id, 160) || ids.has(s.id) || !text(s.name, 300) || s.country !== country || !['church_bell', 'wind_turbine', 'airport'].includes(s.kind) || !inRegion(s, country) || !url(s.url) || (s.provenance !== undefined && !text(s.provenance)) || (s.license !== undefined && !text(s.license)))
             return fail();
         ids.add(s.id);
     }
     for (const r of c.references) {
         const source = c.sources.find(s => s.id === r?.sourceId);
-        if (!r || !text(r.id, 160) || refIds.has(r.id) || !source || source.kind !== r.kind || !text(r.provenance) || !text(r.license) || typeof r.synthetic !== 'boolean' || !validSignature(r.signature) || (r.recordedAt !== undefined && !Number.isFinite(Date.parse(r.recordedAt))))
+        if (!r || !['church_bell', 'wind_turbine'].includes(r.kind) || !text(r.id, 160) || refIds.has(r.id) || !source || source.kind !== r.kind || !text(r.provenance) || !text(r.license) || typeof r.synthetic !== 'boolean' || !validSignature(r.signature) || (r.recordedAt !== undefined && !Number.isFinite(Date.parse(r.recordedAt))))
             return fail();
         refIds.add(r.id);
     }

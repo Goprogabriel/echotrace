@@ -1,9 +1,10 @@
 import {fileURLToPath} from 'node:url';
 import {resolve,dirname} from 'node:path';
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE||'playwright');
-import {writeFile} from 'node:fs/promises';
+import {writeFile,mkdir} from 'node:fs/promises';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 const base=process.env.ECHOTRACE_URL||'http://127.0.0.1:4173/';
+await mkdir(resolve(root,'test-output'),{recursive:true});
 const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH,headless:true});
 const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
 page.on('pageerror',error=>errors.push(error.message));
@@ -38,5 +39,5 @@ await page.locator('.source-panel .source-credit').waitFor({timeout:10000});
 console.log('Flight result:',(await page.locator('.flight-checks').textContent()).slice(0,450));
 await page.setViewportSize({width:1440,height:1000});await page.screenshot({path:root+'/test-output/multi-flight-results.png',fullPage:true});
 if(errors.length)throw Error(errors.join('\n'));
-await writeFile(root+'/test-output/multi-sound-browser.json',JSON.stringify({passed:true,checks:['bell screening','real catalog loading','local reference enrollment/export/match','turbine screening','mobile no overflow','flight demo with extra diagnostics'],pageErrors:errors},null,2));
+await writeFile(root+'/test-output/multi-sound-browser.json',JSON.stringify({passed:true,checks:['bell screening','real catalog loading','local reference enrollment/export/import/match','turbine screening','mobile no overflow','flight demo with extra diagnostics'],pageErrors:errors},null,2));
 await browser.close();

@@ -354,7 +354,7 @@ Kontrollerne er eksperimentelle og giver ikke en sandsynlighed eller præcision 
 Følsomheden gælder flyspor og flymatch. Klokke- og støjscreening bruger faste krav. | Sensitivity applies to aircraft traces and matching. Bell and noise screening uses fixed requirements.
 Ufuldstændigt dansk kortkatalog fra Wikidata. Kirker, enkelte møller og vindmølleparker; en parkposition er ikke hver enkelt mølles placering. Kirkebygninger er ikke verificerede aktive klokkekilder. Ingen stedbundne lydreferencer medfølger. | Incomplete Danish geographic catalogue from Wikidata. Churches, individual turbines and wind farms; a wind farm position is not each turbine's location. Church buildings are not verified active bell sources. No location-linked audio references are included.
 Syntetisk testreference · må ikke bruges til stedmatch | Synthetic test reference · must not be used for location matching
-`.trim().split('\n').map(line => line.split(' | ')));
+`.trim().split('\n').filter(line => line.trim()).map(line => line.split(' | ')));
 
 Object.assign(english, Object.fromEntries(`
 Zoom ind | Zoom in
@@ -579,4 +579,4 @@ Kontrollerne er eksperimentelle og giver ikke en sandsynlighed eller præcision 
 Følsomheden gælder flyspor og flymatch. Klokke- og støjscreening bruger faste krav. | Sensitivity applies to aircraft traces and matching. Bell and noise screening uses fixed requirements.
 Ufuldstændigt dansk kortkatalog fra Wikidata. Kirker, enkelte møller og vindmølleparker; en parkposition er ikke hver enkelt mølles placering. Kirkebygninger er ikke verificerede aktive klokkekilder. Ingen stedbundne lydreferencer medfølger. | Incomplete Danish geographic catalogue from Wikidata. Churches, individual turbines and wind farms; a wind farm position is not each turbine's location. Church buildings are not verified active bell sources. No location-linked audio references are included.
 Syntetisk testreference · må ikke bruges til stedmatch | Synthetic test reference · must not be used for location matching
-`.trim().split('\n').map(line => line.split(' | '))));
+`.trim().split('\n').filter(line => line.trim()).map(line => line.split(' | '))));

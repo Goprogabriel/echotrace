@@ -85,7 +85,7 @@ export interface AcousticReference {
 }
 export interface SoundSource {
   id: string; country: import('./core/regions.js').CountryCode;
-  kind: Exclude<SoundKind, 'aircraft'>; provenance?: string; license?: string; name: string; lat: number; lon: number; url: string;
+  kind: Exclude<SoundKind, 'aircraft'> | 'airport'; provenance?: string; license?: string; name: string; lat: number; lon: number; url: string;
 }
 export interface SourceCatalog {
   schema: 'echotrace-sources/1'; country: import('./core/regions.js').CountryCode;

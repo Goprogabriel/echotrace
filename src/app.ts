@@ -1,3 +1,6 @@
+import {sourcesPage, type SourcesView} from './pages/sources.js';
+import {coveragePoints,filterCoverage,SOURCE_LAYERS} from './core/coverage.js';
+import type {MapView} from './components/map.js';
 import {loadCatalog, parseCatalog, mergeCatalogs, matchSources, referenceBundle} from './core/source-catalog.js';
 import {getLanguage, getLocale, languageFromUrl, languageUrl, setLanguage, translateText, translateTree} from './i18n.js';
 import {homePage} from './pages/home.js';
@@ -20,6 +23,10 @@ const fileInput = document.querySelector<HTMLInputElement>('#media-input')!;
 const catalogInput = document.querySelector<HTMLInputElement>('#catalog-input')!;
 const referenceInput = document.querySelector<HTMLInputElement>('#reference-input')!;
 const dataInput = document.querySelector<HTMLInputElement>('#data-input')!;
+const sourcesView:SourcesView={filter:{kinds:SOURCE_LAYERS.map(l=>l.id),query:'',referencesOnly:false},selectedId:null,page:0};
+const sourcesMapView:MapView={lat:56.1,lon:11.1,zoom:6};
+let catalogLoad:Promise<void>|null=null;
+let sourcesMapFitted=false;
 let state: AppState = initialState(), cleanups: (()=>void)[] = [];
 let worker: Worker | null = null, controller = new AbortController(), job = 0;
 let currentToast = '';
@@ -38,8 +45,8 @@ function render(): void {
   cleanups.forEach(fn=>fn());cleanups=[];
   previousMedia?.pause();
   const r=route();
-  root.innerHTML=r==='#/lab'?labPage(state):r==='#/privacy'?docsPage('privacy'):r==='#/method'?docsPage('method'):homePage();
-  document.title=r==='#/lab'?'Signal-lab — Echotrace':r==='#/privacy'?'Privatliv — Echotrace':r==='#/method'?'Metoden — Echotrace':'Echotrace — Find sporet i lyden';
+  root.innerHTML=r==='#/sources'?sourcesPage(state,sourcesView):r==='#/lab'?labPage(state):r==='#/privacy'?docsPage('privacy'):r==='#/method'?docsPage('method'):homePage();
+  document.title=r==='#/sources'?'Datakilder — Echotrace':r==='#/lab'?'Signal-lab — Echotrace':r==='#/privacy'?'Privatliv — Echotrace':r==='#/method'?'Metoden — Echotrace':'Echotrace — Find sporet i lyden';
   cleanups.push(startReveals(root));
   const hero=root.querySelector<HTMLCanvasElement>('#hero-canvas');if(hero)cleanups.push(startHeroCanvas(hero));
   const preview=root.querySelector<HTMLCanvasElement>('#preview-spectrum');
@@ -51,6 +58,7 @@ function render(): void {
     root.querySelector<HTMLElement>('#demo-plane')!.style.left=`${15+(Number(slider.value)+100)/200*70}%`;
   };
   if(r==='#/lab')initLab();
+  if(r==='#/sources'){initSources();if(!state.catalog&&!catalogLoad&&!state.catalogError)void ensureCatalog();}
   document.documentElement.lang=getLanguage();
   document.title=translateText(document.title);
   const description=document.querySelector<HTMLMetaElement>('meta[name="description"]');
@@ -65,6 +73,31 @@ function changeLanguage(language:'da'|'en'):void {
   for(const field of fields){const el=Array.from(root.querySelectorAll<HTMLInputElement|HTMLSelectElement>('input[name],select[name]')).find(el=>el.name===field.name);if(el){el.value=field.value;if(el instanceof HTMLInputElement)el.checked=field.checked;}}
   root.querySelectorAll('details').forEach((el,i)=>el.open=details[i]||false);
   root.querySelector<HTMLElement>(`[data-language="${language}"]`)?.focus({preventScroll:true});
+}
+function initSources():void {
+  const points=state.catalog?filterCoverage(coveragePoints(state.catalog),sourcesView.filter):[];
+  const map=root.querySelector<HTMLElement>('#coverage-map');
+  const select=(id:string,focus=false)=>{
+    sourcesView.selectedId=id;
+    const source=points.find(p=>p.id===id);
+    if(focus&&source){sourcesMapView.lat=source.lat;sourcesMapView.lon=source.lon;sourcesMapView.zoom=Math.max(12,sourcesMapView.zoom);}
+    render();
+  };
+  if(map)cleanups.push(mountMap(map,{config:{lat:56.1,lon:11.1,radiusKm:50,global:true,startTime:0,clockUncertainty:0,receiverAltitudeM:0,soundSpeed:343},flights:[],candidates:[],grid:[],selected:0,onSelect:()=>{},view:sourcesMapView,fitOnMount:!!state.catalog&&!sourcesMapFitted,sourceLayer:{points,selectedId:sourcesView.selectedId,onSelect:id=>select(id)}}));
+  if(state.catalog)sourcesMapFitted=true;
+  root.querySelectorAll<HTMLInputElement>('[data-source-kind]').forEach(input=>input.addEventListener('change',()=>{
+    sourcesView.filter.kinds=SOURCE_LAYERS.filter(layer=>root.querySelector<HTMLInputElement>(`[data-source-kind="${layer.id}"]`)?.checked).map(layer=>layer.id);sourcesView.page=0;render();
+  }));
+  root.querySelector<HTMLInputElement>('[name="coverage-references"]')?.addEventListener('change',e=>{sourcesView.filter.referencesOnly=(e.target as HTMLInputElement).checked;sourcesView.page=0;render();});
+  const query=root.querySelector<HTMLInputElement>('[name="coverage-query"]');
+  let timer:ReturnType<typeof setTimeout>|undefined;
+  query?.addEventListener('input',()=>{
+    sourcesView.filter.query=query.value;sourcesView.page=0;clearTimeout(timer);
+    timer=setTimeout(()=>{render();root.querySelector<HTMLInputElement>('[name="coverage-query"]')?.focus({preventScroll:true});},150);
+  });cleanups.push(()=>clearTimeout(timer));
+  root.querySelector('[data-coverage-reset]')?.addEventListener('click',()=>{sourcesView.filter={kinds:SOURCE_LAYERS.map(l=>l.id),query:'',referencesOnly:false};sourcesView.selectedId=null;sourcesView.page=0;render();});
+  root.querySelectorAll<HTMLElement>('[data-source-id]').forEach(button=>button.addEventListener('click',()=>select(button.dataset.sourceId!,true)));
+  root.querySelectorAll<HTMLElement>('[data-coverage-page]').forEach(button=>button.addEventListener('click',()=>{sourcesView.page=Number(button.dataset.coveragePage);render();}));
 }
 function initLab(): void {
   const draw=()=>{
@@ -282,6 +315,7 @@ root.addEventListener('click',e=>{
 });
 root.addEventListener('input',e=>{
   const el=e.target as HTMLInputElement|HTMLSelectElement;
+  if(el.closest('#coverage-controls'))return;
   if(el.name==='sensitivity'){
     if(isBusy(state))return;
     state.sensitivity=Number(el.value);
@@ -298,6 +332,7 @@ root.addEventListener('input',e=>{
 });
 root.addEventListener('change',e=>{
   const el=e.target as HTMLInputElement;
+  if(el.closest('#coverage-controls'))return;
   if(el.name==='sensitivity'){if(isBusy(state))return;state.sensitivity=Number(el.value);invalidateResult();render();root.querySelector<HTMLInputElement>('#sensitivity')?.focus({preventScroll:true});return;}
   if(!el.dataset.track||isBusy(state))return;
   if(el.checked&&state.selectedTracks.length>=3){el.checked=false;toast('Vælg højst tre spor ad gangen.');return;}
@@ -316,12 +351,16 @@ function downloadJson(value: unknown, name: string): void {
   const url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:'application/json'}));
   const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
-async function ensureCatalog(): Promise<void> {
-  if(state.catalog)return;
-  const current=job;
-  try {const catalog=await loadCatalog('DK',controller.signal);if(current!==job)return;state.catalog=state.catalog?mergeCatalogs(catalog,state.catalog):catalog;state.catalogError='';state.sourceMatches=state.scan?matchSources(state.scan,state.catalog):[];render();}
-  catch(error){if(current!==job||controller.signal.aborted)return;state.catalogError=error instanceof Error?error.message:'Kataloget kunne ikke indlæses.';render();}
+function ensureCatalog(): Promise<void> {
+  if(state.catalog)return Promise.resolve();
+  if(catalogLoad)return catalogLoad;
+  catalogLoad=(async()=>{
+    try {const catalog=await loadCatalog('DK');state.catalog=state.catalog?mergeCatalogs(catalog,state.catalog):catalog;state.catalogError='';state.sourceMatches=state.scan?matchSources(state.scan,state.catalog):[];}
+    catch(error){state.catalogError=error instanceof Error?error.message:'Kataloget kunne ikke indlæses.';}
+    finally{catalogLoad=null;render();}
+  })();return catalogLoad;
 }
+
 catalogInput.onchange=async()=>{
   const file=catalogInput.files?.[0],current=job;if(!file)return;
   try {if(file.size>15_000_000)throw new Error('Kataloget må højst fylde 15 MB.');const imported=parseCatalog(JSON.parse(await file.text()));if(current!==job)return;
@@ -338,7 +377,7 @@ referenceInput.onchange=async()=>{
     worker.onmessage=e=>{if(current!==job)return;
       if(e.data.type==='error'){fail(new Error(e.data.message),current);return;}
       if(e.data.type!=='signature')return;
-      try {const reference:AcousticReference={id:`local-${crypto.randomUUID()}`,sourceId:source.id,kind:source.kind,signature:e.data.data as SoundSignature,provenance:state.form['reference-provenance'],license:state.form['reference-license'],synthetic:state.form['reference-synthetic']==='yes'};
+      try {const reference:AcousticReference={id:`local-${crypto.randomUUID()}`,sourceId:source.id,kind:'church_bell',signature:e.data.data as SoundSignature,provenance:state.form['reference-provenance'],license:state.form['reference-license'],synthetic:state.form['reference-synthetic']==='yes'};
         const bundle=referenceBundle(source,reference);state.catalog=state.catalog?mergeCatalogs(state.catalog,bundle):bundle;state.sourceMatches=state.scan?matchSources(state.scan,state.catalog):[];
         worker?.terminate();worker=null;state.stage=state.result?'done':'ready';render();downloadJson(bundle,'echotrace-reference.json');toast('Referencen er tilføjet lokalt og eksporteret.');
       }catch(error){fail(error,current);}

@@ -9,6 +9,7 @@ const local=resolve('node_modules/typescript/bin/tsc');
 const custom=process.env.TSC_PATH;
 const result=existsSync(local)?spawnSync(process.execPath,[local,'--pretty','false'],{stdio:'inherit'}):custom?spawnSync(process.execPath,[custom,'--pretty','false'],{stdio:'inherit'}):spawnSync('tsc',['--pretty','false'],{stdio:'inherit',shell:process.platform==='win32'});
 if(result.error||result.status!==0){console.error('Build failed. Install development dependencies with npm install, then npm run build.');process.exit(1);}
+for(const notice of ['LICENSE','THIRD_PARTY_NOTICES.md'])if(existsSync(notice))cpSync(notice,`dist/${notice}`);
 mkdirSync('dist/js/workers',{recursive:true});cpSync('src/workers/capture-worklet.js','dist/js/workers/capture-worklet.js');
 // Content-address the complete browser module graph. A new entry point alone is
 // insufficient: its relative imports and workers would still reuse cached URLs.

@@ -35,9 +35,11 @@ for(const response of responses){
     sources.set(source.id,source);
   }
 }
-const catalog=parseCatalog({schema:'echotrace-sources/1',country:'DK',source:'Wikidata · structured data (CC0)',license:'CC0 1.0 · https://creativecommons.org/publicdomain/zero/1.0/',fetchedAt:new Date().toISOString(),
+const existing=await readFile(resolve(root,'public/data/dk-sources.json'),'utf8').then(JSON.parse).catch(()=>null);
+const airports=existing?parseCatalog(existing).sources.filter(s=>s.kind==='airport'):[];
+const catalog=parseCatalog({schema:'echotrace-sources/1',country:'DK',source:airports.length?'Wikidata (CC0) + OurAirports (public domain)':'Wikidata · structured data (CC0)',license:airports.length?'Kildernes egne licenser · CC0 / public domain':'CC0 1.0 · https://creativecommons.org/publicdomain/zero/1.0/',fetchedAt:new Date().toISOString(),
   coverage:'Ufuldstændigt dansk kortkatalog fra Wikidata. Kirker, enkelte møller og vindmølleparker; en parkposition er ikke hver enkelt mølles placering. Kirkebygninger er ikke verificerede aktive klokkekilder. Ingen stedbundne lydreferencer medfølger.',
-  sources:[...sources.values()].sort((a,b)=>a.id.localeCompare(b.id)),references:[]});
+  sources:[...sources.values()].map(s=>({...s,provenance:'Wikidata · structured data (CC0)',license:'CC0 1.0'})).concat(airports).sort((a,b)=>a.id.localeCompare(b.id)),references:[]});
 if(catalog.sources.length<100)throw new Error('Unexpectedly small result; previous catalogue preserved.');
 await mkdir(resolve(root,'public/data'),{recursive:true});
 const path=resolve(root,'public/data/dk-sources.json'), data=JSON.stringify(catalog,null,2)+'\n';

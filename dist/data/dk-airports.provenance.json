@@ -1,0 +1,16 @@
+{
+  "source": "https://raw.githubusercontent.com/davidmegginson/ourairports-data/main/airports.csv",
+  "sourcePage": "https://ourairports.com/data/",
+  "fetchedAt": "2026-11-04T10:18:26.708Z",
+  "license": "Public domain",
+  "rawCsvSha256": "7d619dcdaec1d2b64950632819f8a4984db2983ea9eeab6e917176dfe3f6e498",
+  "count": 102,
+  "includedTypes": [
+    "small_airport",
+    "medium_airport",
+    "large_airport"
+  ],
+  "country": "DK",
+  "excluded": "heliports, closed airports, seaplane bases, Greenland, Faroe Islands",
+  "datasetSha256": "56623ee8f60c4bbebe4fe8b37d7d0e54e9c3b078387b6c97de8b24d4dbf3e09c"
+}

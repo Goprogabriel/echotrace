@@ -1,8 +1,10 @@
+import {clusterSources, SOURCE_LAYERS, type CoveragePoint, type SourceCluster} from '../core/coverage.js';
 import {translateTree} from '../i18n.js';
 import type {Candidate, Flight, GridCell, SearchConfig} from '../types.js';
 import {clamp} from '../core/math.js';
 import {icon} from './ui.js';
-interface MapOptions {config: SearchConfig; flights: Flight[]; candidates: Candidate[]; grid: GridCell[]; selected: number; onSelect: (i: number)=>void; onPick?: (lat: number, lon: number)=>void}
+export interface MapView {lat:number; lon:number; zoom:number}
+interface MapOptions {fitOnMount?:boolean; view?:MapView; sourceLayer?:{points:CoveragePoint[];selectedId:string|null;onSelect:(id:string)=>void};config: SearchConfig; flights: Flight[]; candidates: Candidate[]; grid: GridCell[]; selected: number; onSelect: (i: number)=>void; onPick?: (lat: number, lon: number)=>void}
 function project(lat: number, lon: number, zoom: number): [number,number] {
   const scale=256*2**zoom, s=Math.sin(clamp(lat,-85,85)*Math.PI/180);
   return [(lon+180)/360*scale,(.5-Math.log((1+s)/(1-s))/(4*Math.PI))*scale];
@@ -12,18 +14,20 @@ function unproject(x: number,y: number,z:number): [number,number] {
 }
 let mapTilesEnabled = true;
 export function mountMap(container: HTMLElement, options: MapOptions): ()=>void {
-  container.innerHTML=`<div class="map-tiles"></div><canvas class="geo-canvas" tabindex="0" aria-label="${options.onPick?'Vælg søgeområde på kortet. Klik for at sætte centrum.':'Kort med flybaner og kandidatområder.'} Brug piletaster til at flytte og plus/minus til at zoome. Ctrl eller Command og rul zoomer også."></canvas><div class="heatmap-legend"><strong>Kurvetilpasning</strong><div></div><span>Lavere fejl ← → Højere fejl</span><small>Relativ skala · ikke sandsynlighed</small></div><div class="map-controls"><button type="button" data-map="plus" aria-label="Zoom ind">${icon('plus')}</button><button type="button" data-map="minus" aria-label="Zoom ud">${icon('minus')}</button><button type="button" data-map="fit" aria-label="${options.config.global?'Vis alle mulige områder':'Vis hele søgeområdet'}">${icon('target')}</button></div><div class="map-bottom"><label class="tile-toggle"><input type="checkbox" data-map="tiles" ${mapTilesEnabled?'checked':''}><span>Vis baggrundskort</span></label><span class="map-attribution">${mapTilesEnabled?'© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap-bidragsydere</a>':'Geografisk grid · træk for at flytte'}</span></div><div class="map-load-error" role="status" hidden>Kortfliser kunne ikke hentes. Du kan stadig bruge koordinater, markører og zoom.</div>`;
+  container.innerHTML=`<div class="map-tiles"></div><canvas class="geo-canvas" tabindex="0" aria-label="${options.sourceLayer?'Kort med datakilder. Klik på en gruppe for at zoome ind eller en kilde for detaljer.':options.onPick?'Vælg søgeområde på kortet. Klik for at sætte centrum.':'Kort med flybaner og kandidatområder.'} Brug piletaster til at flytte og plus/minus til at zoome. Ctrl eller Command og rul zoomer også."></canvas>${options.sourceLayer?'':'<div class="heatmap-legend"><strong>Kurvetilpasning</strong><div></div><span>Lavere fejl ← → Højere fejl</span><small>Relativ skala · ikke sandsynlighed</small></div>'}<div class="map-controls"><button type="button" data-map="plus" aria-label="Zoom ind">${icon('plus')}</button><button type="button" data-map="minus" aria-label="Zoom ud">${icon('minus')}</button><button type="button" data-map="fit" aria-label="${options.sourceLayer?'Vis alle datakilder':options.config.global?'Vis alle mulige områder':'Vis hele søgeområdet'}">${icon('target')}</button></div><div class="map-bottom"><label class="tile-toggle"><input type="checkbox" data-map="tiles" ${mapTilesEnabled?'checked':''}><span>Vis baggrundskort</span></label><span class="map-attribution">${mapTilesEnabled?'© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap-bidragsydere</a>':'Geografisk grid · træk for at flytte'}</span></div><div class="map-load-error" role="status" hidden>Kortfliser kunne ikke hentes. Du kan stadig bruge koordinater, markører og zoom.</div>`;
   const canvas=container.querySelector('canvas')!, tiles=container.querySelector<HTMLElement>('.map-tiles')!;
   let centerLat=options.config.lat, centerLon=options.config.lon, zoom=10, enabled=mapTilesEnabled;
+  let clusters:SourceCluster[]=[];
   let dragging: {x:number;y:number;center:[number,number]}|null=null;
   let tileKey='';
   const tileError=container.querySelector<HTMLElement>('.map-load-error')!;
   const fit=()=>{
     const rect=container.getBoundingClientRect();
     if(options.config.global){
-      if(!options.candidates.length){centerLat=0;centerLon=0;zoom=2;draw();return;}
-      const anchor=project(options.candidates[0].lat,options.candidates[0].lon,0);
-      const points=options.candidates.map(c=>{const p=project(c.lat,c.lon,0);const dx=p[0]-anchor[0];return [anchor[0]+dx-Math.round(dx/256)*256,p[1]];});
+      const locations=options.sourceLayer?.points??options.candidates;
+      if(!locations.length){centerLat=options.sourceLayer?56:0;centerLon=options.sourceLayer?10:0;zoom=options.sourceLayer?6:2;draw();return;}
+      const anchor=project(locations[0].lat,locations[0].lon,0);
+      const points=locations.map(c=>{const p=project(c.lat,c.lon,0);const dx=p[0]-anchor[0];return [anchor[0]+dx-Math.round(dx/256)*256,p[1]];});
       const xs=points.map(p=>p[0]),ys=points.map(p=>p[1]);
       const left=Math.min(...xs),right=Math.max(...xs),top=Math.min(...ys),bottom=Math.max(...ys);
       const center=unproject((left+right)/2,(top+bottom)/2,0);centerLat=center[0];centerLon=((center[1]+540)%360)-180;
@@ -33,6 +37,7 @@ export function mountMap(container: HTMLElement, options: MapOptions): ()=>void 
     zoom=clamp(Math.floor(Math.log2(40075016*Math.cos(options.config.lat*Math.PI/180)*Math.min(rect.width,rect.height)/(options.config.radiusKm*2600*256))),2,17);centerLat=options.config.lat;centerLon=options.config.lon;draw();
   };
   function draw():void {
+    if(options.view){options.view.lat=centerLat;options.view.lon=centerLon;options.view.zoom=zoom;}
     const rect=container.getBoundingClientRect(),w=rect.width,h=rect.height,dpr=Math.min(2,devicePixelRatio||1);
     canvas.width=Math.floor(w*dpr);canvas.height=Math.floor(h*dpr);const ctx=canvas.getContext('2d')!;ctx.scale(dpr,dpr);
     const center=project(centerLat,centerLon,zoom);
@@ -70,6 +75,19 @@ export function mountMap(container: HTMLElement, options: MapOptions): ()=>void 
       ctx.fillStyle=selected?'#27674d22':'#27674d11';ctx.beginPath();ctx.arc(...p,selected?28:18,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle=selected?'#ffffff':'#d5dfed';ctx.beginPath();ctx.arc(...p,4,0,Math.PI*2);ctx.fill();
       ctx.font='bold 11px ui-monospace, monospace';ctx.fillText(String(i+1).padStart(2,'0'),p[0]+12,p[1]-10);
     });
+    if(options.sourceLayer){
+      clusters=clusterSources(options.sourceLayer.points,xy,w,h,zoom);
+      for(const cluster of clusters){
+        const color=SOURCE_LAYERS.find(layer=>layer.id===cluster.kind)!.color, many=cluster.points.length>1;
+        const selected=cluster.points.some(p=>p.id===options.sourceLayer!.selectedId);
+        const references=cluster.points.some(p=>p.referenceCount>0);
+        const radius=many?Math.min(20,10+Math.log2(cluster.points.length)*1.5):selected?9:5;
+        ctx.beginPath();ctx.arc(cluster.x,cluster.y,radius,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();
+        ctx.strokeStyle=selected?'#fff':'#0a1020';ctx.lineWidth=selected?3:1.5;ctx.stroke();
+        if(references){ctx.beginPath();ctx.arc(cluster.x,cluster.y,radius+3,0,Math.PI*2);ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();}
+        if(many){ctx.fillStyle='#090e19';ctx.font='bold 11px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(String(cluster.points.length),cluster.x,cluster.y);ctx.textAlign='start';ctx.textBaseline='alphabetic';}
+      }
+    }
     if(enabled){
       const startX=Math.floor((center[0]-w/2)/256),endX=Math.floor((center[0]+w/2)/256),startY=Math.floor((center[1]-h/2)/256),endY=Math.floor((center[1]+h/2)/256);
       const key=`${zoom}/${startX}/${endX}/${startY}/${endY}`;
@@ -101,6 +119,14 @@ export function mountMap(container: HTMLElement, options: MapOptions): ()=>void 
     pointers.delete(e.pointerId);if(pinching){if(!pointers.size)pinching=false;dragging=null;return;}
     if(dragging&&Math.hypot(e.clientX-dragging.x,e.clientY-dragging.y)<5){
       const r=canvas.getBoundingClientRect(),center=project(centerLat,centerLon,zoom);
+      if(options.sourceLayer){
+        const x=e.clientX-r.left,y=e.clientY-r.top;
+        const hit=[...clusters].reverse().find(c=>Math.hypot(c.x-x,c.y-y)<(c.points.length>1?23:12));
+        if(hit){
+          if(hit.points.length>1){centerLat=hit.points.reduce((v,p)=>v+p.lat,0)/hit.points.length;centerLon=hit.points.reduce((v,p)=>v+p.lon,0)/hit.points.length;zoom=clamp(zoom+2,2,18);draw();if(zoom===18)options.sourceLayer.onSelect(hit.points[0].id);}
+          else options.sourceLayer.onSelect(hit.points[0].id);
+        }
+      }
       if(options.onPick){
         const ll=unproject(center[0]+e.clientX-r.left-r.width/2,center[1]+e.clientY-r.top-r.height/2,zoom);
         options.config.lat=clamp(ll[0],-80,80);options.config.lon=((ll[1]+540)%360)-180;
@@ -134,6 +160,6 @@ export function mountMap(container: HTMLElement, options: MapOptions): ()=>void 
     container.querySelector('.map-attribution')!.innerHTML=enabled?'© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap-bidragsydere</a>':'Geografisk grid · træk for at flytte';
     translateTree(container);draw();
   });
-  const observer=new ResizeObserver(()=>draw());observer.observe(container);fit();translateTree(container);
+  const observer=new ResizeObserver(()=>draw());observer.observe(container);if(options.view&&!options.fitOnMount){centerLat=options.view.lat;centerLon=options.view.lon;zoom=options.view.zoom;draw();}else fit();translateTree(container);
   return()=>{observer.disconnect();canvas.onpointerdown=null;canvas.onpointermove=null;canvas.onpointerup=null;canvas.onkeydown=null;canvas.onpointercancel=null;canvas.removeEventListener('wheel',wheel);tiles.replaceChildren();};
 }
