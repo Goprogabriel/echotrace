@@ -29,7 +29,7 @@ try {
  await page.locator('[data-coverage-reset]').click();await page.getByText('2601 af 2601 kilder vises',{exact:true}).waitFor();
  await page.locator('.coverage-pagination button').filter({hasText:'Næste'}).click();
  if(!(await page.locator('.coverage-pagination').textContent()).includes('2 /'))throw Error('Pagination failed');
- await page.setViewportSize({width:390,height:844});await page.getByRole('button',{name:'Vis alle datakilder',exact:true}).click();await page.screenshot({path:resolve(root,'test-output/coverage-mobile.png'),fullPage:true});
+ await page.setViewportSize({width:390,height:844});await page.getByRole('button',{name:'Vis alle datakilder',exact:true}).click();await page.evaluate(()=>{document.activeElement?.blur();window.scrollTo({top:0,behavior:'instant'});});await page.screenshot({path:resolve(root,'test-output/coverage-mobile.png'),fullPage:true});
  if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1))throw Error('Mobile overflow');
  if(!(await page.getByRole('link',{name:'Datakort',exact:true}).first().isVisible()))throw Error('Mobile map navigation missing');
  await page.getByRole('button',{name:'Skift til engelsk'}).click();await page.getByRole('heading',{name:'One map of our data sources'}).waitFor();
